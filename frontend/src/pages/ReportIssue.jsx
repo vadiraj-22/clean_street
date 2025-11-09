@@ -115,8 +115,14 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
     if (photo) formData.append("photo", photo); //
 
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/complaints/create`, { //
-        method: "POST", credentials: "include", body: formData, //
+        method: "POST", 
+        credentials: "include", 
+        body: formData,
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
       });
       const data = await res.json(); //
       if (res.ok) { //

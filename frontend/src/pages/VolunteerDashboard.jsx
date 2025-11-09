@@ -53,8 +53,14 @@ const VolunteerDashboard = () => {
     setLoading(true);
     setError("");
     try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+      
       const nearbyRes = await fetch(`${backendUrl}/api/volunteer/nearby-complaints?maxDistance=50`, {
         credentials: "include",
+        headers
       });
       const nearbyData = await nearbyRes.json();
       if (nearbyRes.ok && nearbyData.success) {
@@ -66,6 +72,7 @@ const VolunteerDashboard = () => {
 
       const assignmentsRes = await fetch(`${backendUrl}/api/volunteer/my-assignments`, {
         credentials: "include",
+        headers
       });
       const assignmentsData = await assignmentsRes.json();
       if (assignmentsRes.ok && assignmentsData.success) {
@@ -84,7 +91,7 @@ const VolunteerDashboard = () => {
 
       // ✅ Fetch admin logs (Recent Updates)
       try {
-        const logsRes = await fetch(`${backendUrl}/api/admin/logs`, { credentials: "include" });
+        const logsRes = await fetch(`${backendUrl}/api/admin/logs`, { credentials: "include", headers });
         const logsData = await logsRes.json();
         if (logsRes.ok && logsData.success) {
           setActivities(logsData.data.slice(0, 5)); // Show top 5 logs
@@ -106,11 +113,14 @@ const VolunteerDashboard = () => {
 
   const handleAction = async (actionType, complaintId, payload = null) => {
     setActionLoading((prev) => ({ ...prev, [complaintId]: true }));
+    const token = localStorage.getItem('token');
     let url = `${backendUrl}/api/volunteer/${actionType}/${complaintId}`;
     let options = {
       method: "POST",
       credentials: "include",
-      headers: {},
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
     };
 
     if (actionType === "update-status") {

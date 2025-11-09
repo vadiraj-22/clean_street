@@ -29,8 +29,12 @@ const AdminStatistics = () => {
   const fetchDetailedStats = async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/admin/detailed-stats`, {
         credentials: "include",
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
       });
 
       if (!res.ok) {

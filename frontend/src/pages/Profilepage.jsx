@@ -70,7 +70,15 @@ export default function Profilepage() {
     try {
       const formData = new FormData();
       formData.append("photo", selectedFile);
-      const res = await fetch(`${backend_Url}/api/user/profile/photo`, { method: "POST", credentials: "include", body: formData });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backend_Url}/api/user/profile/photo`, { 
+        method: "POST", 
+        credentials: "include", 
+        body: formData,
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to upload photo");
       setUser(data.user);
@@ -86,7 +94,16 @@ export default function Profilepage() {
   const handleSave = async () => {
     setSaveStatus({ saving: true, error: "", success: "" });
     try {
-      const res = await fetch(`${backend_Url}/api/user/profile`, { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(form) });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backend_Url}/api/user/profile`, { 
+        method: "PUT", 
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }, 
+        credentials: "include", 
+        body: JSON.stringify(form) 
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update profile");
       const updatedUserData = { ...user, ...data };
@@ -117,8 +134,14 @@ export default function Profilepage() {
     }
     setPasswordStatus({ submitting: true, error: "", success: "" });
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/user/profile/password`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        method: "POST", 
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }, 
+        credentials: "include",
         body: JSON.stringify({ oldPassword: passwordForm.oldPassword, newPassword: passwordForm.newPassword })
       });
       const data = await res.json();

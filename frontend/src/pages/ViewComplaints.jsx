@@ -28,8 +28,12 @@ const ViewComplaints = () => {
 
     const fetchComplaints = async () => {
       try {
+        const token = localStorage.getItem('token');
         const res = await fetch(`${backend_Url}/api/complaints/community`, {
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          }
         });
         const data = await res.json();
         if (res.ok && data.success) {
@@ -82,9 +86,13 @@ const ViewComplaints = () => {
         return;
     }
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/complaints/${complaintId}/upvote`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
       });
       const data = await res.json();
       if (res.ok) {
@@ -119,9 +127,13 @@ const ViewComplaints = () => {
         return;
     }
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/complaints/${complaintId}/downvote`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
       });
       const data = await res.json();
       if (res.ok) {

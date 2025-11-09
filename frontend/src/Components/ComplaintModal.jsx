@@ -75,7 +75,13 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
     const fetchComments = async () => { 
         if (!complaint) return;
         try {
-            const res = await fetch(`${backendUrl}/api/comments/${complaint._id}`, { credentials: 'include' });
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${backendUrl}/api/comments/${complaint._id}`, { 
+              credentials: 'include',
+              headers: {
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              }
+            });
             const data = await res.json();
             if (res.ok) {
                 setComments(data.data);
@@ -94,7 +100,15 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
         if (parentId) formData.append("parentCommentId", parentId);
         if (imageFile) formData.append("image", imageFile);
         try {
-            const res = await fetch(`${backendUrl}/api/comments/${complaint._id}`, { method: 'POST', credentials: 'include', body: formData });
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${backendUrl}/api/comments/${complaint._id}`, { 
+              method: 'POST', 
+              credentials: 'include', 
+              body: formData,
+              headers: {
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              }
+            });
             const newCommentData = await res.json();
             if (res.ok) {
                 fetchComments();
@@ -115,14 +129,28 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
     const handleLike = async (commentId) => { 
          if (!currentUser) return; // Added !currentUser check
          try {
-            const res = await fetch(`${backendUrl}/api/comments/${commentId}/like`, { method: 'POST', credentials: 'include' });
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${backendUrl}/api/comments/${commentId}/like`, { 
+              method: 'POST', 
+              credentials: 'include',
+              headers: {
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              }
+            });
             if (res.ok) fetchComments();
         } catch (error) { console.error("Error liking comment:", error); }
     };
     const handleDislike = async (commentId) => { 
         if (!currentUser) return; // Added !currentUser check
         try {
-            const res = await fetch(`${backendUrl}/api/comments/${commentId}/dislike`, { method: 'POST', credentials: 'include' });
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${backendUrl}/api/comments/${commentId}/dislike`, { 
+              method: 'POST', 
+              credentials: 'include',
+              headers: {
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              }
+            });
             if (res.ok) fetchComments();
         } catch (error) { console.error("Error disliking comment:", error); }
     };
@@ -130,7 +158,14 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
         if (!currentUser) return; // Added !currentUser check
         if (window.confirm("Are you sure you want to delete this comment?")) {
             try {
-                const res = await fetch(`${backendUrl}/api/comments/${commentId}`, { method: 'DELETE', credentials: 'include' });
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${backendUrl}/api/comments/${commentId}`, { 
+                  method: 'DELETE', 
+                  credentials: 'include',
+                  headers: {
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                  }
+                });
                 if (res.ok) fetchComments();
             } catch (error) { console.error("Error deleting comment:", error); }
         }

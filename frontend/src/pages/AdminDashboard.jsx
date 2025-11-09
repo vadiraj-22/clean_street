@@ -43,11 +43,16 @@ const AdminDashboard = () => {
     setLoading(true);
     setError("");
     try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+      
       const [statsRes, usersRes, complaintsRes, logsRes] = await Promise.all([
-        fetch(`${backend_Url}/api/admin/stats`, { credentials: "include" }),
-        fetch(`${backend_Url}/api/admin/users`, { credentials: "include" }),
-        fetch(`${backend_Url}/api/admin/complaints`, { credentials: "include" }),
-        fetch(`${backend_Url}/api/admin/logs`, { credentials: "include" }),
+        fetch(`${backend_Url}/api/admin/stats`, { credentials: "include", headers }),
+        fetch(`${backend_Url}/api/admin/users`, { credentials: "include", headers }),
+        fetch(`${backend_Url}/api/admin/complaints`, { credentials: "include", headers }),
+        fetch(`${backend_Url}/api/admin/logs`, { credentials: "include", headers }),
       ]);
 
       if (!statsRes.ok || !usersRes.ok || !complaintsRes.ok) {
@@ -90,9 +95,13 @@ const AdminDashboard = () => {
     if (!selectedRole || !editingUserId || userId !== editingUserId) return;
     setIsSavingRole(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/admin/users/${userId}/role`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         credentials: 'include',
         body: JSON.stringify({ role: selectedRole }),
       });
@@ -126,9 +135,13 @@ const AdminDashboard = () => {
     if (!selectedStatus || !editingComplaintId || complaintId !== editingComplaintId) return;
     setIsSavingStatus(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/admin/complaints/${complaintId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         credentials: 'include',
         body: JSON.stringify({ status: selectedStatus }),
       });
@@ -222,8 +235,12 @@ const AdminDashboard = () => {
       toast.loading(`Generating ${format.toUpperCase()} report...`);
       
       // Fetch detailed statistics
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/admin/detailed-stats`, {
         credentials: "include",
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
       });
 
       if (!res.ok) {
