@@ -13,8 +13,8 @@ const generateTokenAndSetCookie = (res, user) => {
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: NODE_ENV !== "development",
-    sameSite: NODE_ENV === "development" ? "strict" : "none",
+    secure: true,
+    sameSite: "none",
     maxAge: 60 * 60 * 1000,
   });
   return token;
