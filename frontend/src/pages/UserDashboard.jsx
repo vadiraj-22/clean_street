@@ -46,8 +46,12 @@ const UserDashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
+        const token = localStorage.getItem('token');
         const res = await fetch(`${backend_Url}/api/complaints/my-reports`, {
           credentials: "include",
+          headers: {
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          }
         });
         const data = await res.json();
         if (res.ok && data.success) {
@@ -70,7 +74,13 @@ const UserDashboard = () => {
 
         // === Fetch recent admin logs ===
         try {
-          const logsRes = await fetch(`${backend_Url}/api/admin/logs`, { credentials: "include" });
+          const token = localStorage.getItem('token');
+          const logsRes = await fetch(`${backend_Url}/api/admin/logs`, { 
+            credentials: "include",
+            headers: {
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            }
+          });
           const logsData = await logsRes.json();
           if (logsRes.ok && logsData.success) {
             setActivities(logsData.data.slice(0, 5));
@@ -93,9 +103,13 @@ const UserDashboard = () => {
       return;
     }
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/complaints/${complaintId}`, {
         method: "DELETE",
         credentials: "include",
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
       });
       const data = await res.json();
       if (res.ok) {
