@@ -19,14 +19,14 @@ const AboutPage = () => {
 
                     <section className="space-y-6 text-gray-700 leading-relaxed">
                         <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                            <FiTarget className="text-blue-600" /> Our Mission
+                            <FiTarget className="text-yellow-500" /> Our Mission
                         </h2>
                         <p>
                             Clean Street is dedicated to empowering citizens to take an active role in maintaining and improving the cleanliness of their neighborhoods. We believe that by providing an easy-to-use platform for reporting and tracking local environmental issues, we can foster collaboration between residents, volunteers, and local authorities to create cleaner, healthier, and more vibrant communities.
                         </p>
 
                         <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                            <FiUsers className="text-green-600" /> Who We Are
+                            <FiUsers className="text-yellow-500" /> Who We Are
                         </h2>
                         <p>
                             We are a community-focused initiative leveraging technology to address common urban challenges like garbage disposal, road damage, and infrastructure maintenance. Our platform connects people who care about their local environment with the resources and channels needed to make a tangible difference.

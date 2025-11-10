@@ -18,22 +18,22 @@ const ServicesPage = () => {
                     </header>
 
                     <section className="space-y-4 px-16 text-gray-700 leading-relaxed">
-                        <ServiceItem icon={<FiMapPin className="text-blue-600"/>} title="Issue Reporting with Geolocation">
+                        <ServiceItem icon={<FiMapPin className="text-yellow-500"/>} title="Issue Reporting with Geolocation">
                             Easily report environmental concerns using an interactive map to pinpoint the exact location. Add details, priority, type, and photos for comprehensive reporting.
                         </ServiceItem>
-                        <ServiceItem icon={<FiCheckSquare className="text-green-600"/>} title="Status Tracking Dashboard">
+                        <ServiceItem icon={<FiCheckSquare className="text-yellow-500"/>} title="Status Tracking Dashboard">
                             Users get a personal dashboard to monitor the real-time status (Pending, In Review, Resolved) of all the issues they have reported.
                         </ServiceItem>
-                        <ServiceItem icon={<FiEye className="text-purple-600"/>} title="Community Complaint View">
+                        <ServiceItem icon={<FiEye className="text-yellow-500"/>} title="Community Complaint View">
                             Browse and view details of issues reported by other members of the community, fostering transparency and collective awareness. Vote on reports to highlight urgency.
                         </ServiceItem>
-                        <ServiceItem icon={<FiMessageSquare className="text-orange-600"/>} title="Discussion & Comments">
+                        <ServiceItem icon={<FiMessageSquare className="text-yellow-500"/>} title="Discussion & Comments">
                             Engage in conversations directly on complaint reports. Add comments, replies, and even images to provide updates or ask questions.
                         </ServiceItem>
-                        <ServiceItem icon={<FiUsers className="text-teal-600"/>} title="Volunteer Coordination">
+                        <ServiceItem icon={<FiUsers className="text-yellow-500"/>} title="Volunteer Coordination">
                             A dedicated dashboard for registered volunteers to find and assign nearby tasks, update statuses, and actively participate in resolving reported issues.
                         </ServiceItem>
-                        <ServiceItem icon={<FiShield className="text-red-600"/>} title="Admin Management Panel">
+                        <ServiceItem icon={<FiShield className="text-yellow-500"/>} title="Admin Management Panel">
                             Centralized control for administrators to oversee users, manage roles, view all complaints, and monitor overall platform activity.
                         </ServiceItem>
                     </section>
@@ -45,7 +45,7 @@ const ServicesPage = () => {
 };
 
 const ServiceItem = ({ icon, title, children }) => (
-    <div className="flex items-start gap-4 p-4 bg-gray-50/70 rounded-lg border border-gray-200/60">
+    <div className="flex items-start gap-4 p-4 bg-gray-300/15 rounded-2xl border border-gray-200/60">
         <div className="flex-shrink-0 mt-1 text-2xl">
             {icon}
         </div>

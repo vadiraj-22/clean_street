@@ -20,7 +20,7 @@ const HowItWorksPage = () => {
                     <section className="space-y-8 px-16 text-gray-700 leading-relaxed">
                         <div className='bg-gray-300/15 rounded-2xl p-4'>
                             <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                <FiEdit3 className="text-blue-600" /> 1. Report an Issue
+                                <FiEdit3 className="text-yellow-500" /> 1. Report an Issue
                             </h2>
                             <p>
                                 See a problem like overflowing bins, potholes, or broken streetlights? Use our simple reporting form. Pinpoint the location on the map, add a description, select the issue type and priority, and optionally upload a photo. Your detailed report helps volunteers and authorities act faster.
@@ -28,7 +28,7 @@ const HowItWorksPage = () => {
                         </div>
                         <div className='bg-gray-300/15 rounded-2xl p-4'>
                             <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                <FiEye className="text-purple-600" /> 2. Track Progress
+                                <FiEye className="text-yellow-500" /> 2. Track Progress
                             </h2>
                             <p>
                                 Once submitted, you can track the status of your report (Pending, In Review, Resolved) directly from your personalized User Dashboard. You can also view reports submitted by others in the Community Reports section. Engage in discussions by adding comments to reports.
@@ -36,7 +36,7 @@ const HowItWorksPage = () => {
                         </div>
                          <div className='bg-gray-300/15 rounded-2xl p-4'>
                             <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                <FiTool className="text-orange-600" /> 3. Volunteer Action
+                                <FiTool className="text-yellow-500" /> 3. Volunteer Action
                             </h2>
                             <p>
                                 Registered volunteers can view nearby pending issues on their Volunteer Dashboard. They can assign tasks to themselves, update the status as they work on resolving the issue (e.g., changing it to "In Progress" or "Resolved"), and help keep the community informed.
@@ -44,7 +44,7 @@ const HowItWorksPage = () => {
                         </div>
                          <div className='bg-gray-300/15 rounded-2xl p-4'>
                             <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                                <FiUserCheck className="text-green-600" /> 4. Admin Oversight
+                                <FiUserCheck className="text-yellow-500" /> 4. Admin Oversight
                             </h2>
                             <p>
                                 Administrators have an overview of all users and complaints. They can manage user roles, monitor the overall progress of issue resolution, and potentially coordinate larger efforts or escalate issues to relevant authorities when necessary.
