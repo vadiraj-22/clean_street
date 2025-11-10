@@ -91,21 +91,30 @@ const ViewComplaints = () => {
         method: 'POST',
         credentials: 'include',
         headers: {
+          'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` })
         }
       });
       const data = await res.json();
+      
       if (res.ok) {
-
-        const updatedComplaints = complaints.map(complaint =>
-          complaint._id === complaintId
-            ? {
-                ...complaint,
-                upvotes: Array(data.data.upvotes).fill(null),
-                downvotes: Array(data.data.downvotes).fill(null)
-              }
-            : complaint
-        );
+        const updatedComplaints = complaints.map(complaint => {
+          if (complaint._id === complaintId) {
+            // Create arrays based on the counts and user vote status
+            const upvotesArray = data.data.hasUpvoted 
+              ? [...(complaint.upvotes || []).filter(id => id !== user._id && id?._id !== user._id), user._id]
+              : (complaint.upvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+            
+            const downvotesArray = (complaint.downvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+            
+            return {
+              ...complaint,
+              upvotes: upvotesArray,
+              downvotes: downvotesArray
+            };
+          }
+          return complaint;
+        });
 
         const sortedComplaints = updatedComplaints.sort((a, b) => {
           const netVotesA = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
@@ -113,10 +122,12 @@ const ViewComplaints = () => {
           return netVotesB - netVotesA;
         });
         setComplaints(sortedComplaints);
-      } else { throw new Error(data.message || 'Failed to upvote'); }
+      } else { 
+        throw new Error(data.message || 'Failed to upvote'); 
+      }
     } catch (error) {
       console.error("Error upvoting complaint:", error);
-       setError(error.message || "Could not record vote. Please try again.");
+      setError(error.message || "Could not record vote. Please try again.");
     }
   };
 
@@ -132,21 +143,30 @@ const ViewComplaints = () => {
         method: 'POST',
         credentials: 'include',
         headers: {
+          'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` })
         }
       });
       const data = await res.json();
+      
       if (res.ok) {
-
-        const updatedComplaints = complaints.map(complaint =>
-          complaint._id === complaintId
-            ? {
-                ...complaint,
-                upvotes: Array(data.data.upvotes).fill(null),
-                downvotes: Array(data.data.downvotes).fill(null)
-              }
-            : complaint
-        );
+        const updatedComplaints = complaints.map(complaint => {
+          if (complaint._id === complaintId) {
+            // Create arrays based on the counts and user vote status
+            const upvotesArray = (complaint.upvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+            
+            const downvotesArray = data.data.hasDownvoted 
+              ? [...(complaint.downvotes || []).filter(id => id !== user._id && id?._id !== user._id), user._id]
+              : (complaint.downvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+            
+            return {
+              ...complaint,
+              upvotes: upvotesArray,
+              downvotes: downvotesArray
+            };
+          }
+          return complaint;
+        });
 
         const sortedComplaints = updatedComplaints.sort((a, b) => {
           const netVotesA = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
@@ -154,7 +174,9 @@ const ViewComplaints = () => {
           return netVotesB - netVotesA;
         });
         setComplaints(sortedComplaints);
-      } else { throw new Error(data.message || 'Failed to downvote'); }
+      } else { 
+        throw new Error(data.message || 'Failed to downvote'); 
+      }
     } catch (error) {
       console.error("Error downvoting complaint:", error);
       setError(error.message || "Could not record vote. Please try again.");
@@ -223,6 +245,10 @@ const ViewComplaints = () => {
 
 const ComplaintCard = ({ complaint, onClick, onUpvote, onDownvote, user }) => {
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' });
+
+  // Check if current user has upvoted or downvoted
+  const hasUpvoted = user && complaint.upvotes?.some(vote => vote === user._id || vote?._id === user._id);
+  const hasDownvoted = user && complaint.downvotes?.some(vote => vote === user._id || vote?._id === user._id);
 
   const getStatusBadge = (status) => {
     // ... (This function remains the same)
@@ -312,19 +338,27 @@ const ComplaintCard = ({ complaint, onClick, onUpvote, onDownvote, user }) => {
                     e.stopPropagation();
                     onUpvote(complaint._id);
                   }}
-                  className="flex items-center gap-1 text-theme-secondary hover:text-green-600 transition-colors"
+                  className={`flex items-center gap-1 transition-colors ${
+                    hasUpvoted 
+                      ? 'text-green-600' 
+                      : 'text-theme-secondary hover:text-green-600'
+                  }`}
                   aria-label={`Upvote this complaint currently having ${complaint.upvotes?.length || 0} upvotes`}
                 >
                   <FaThumbsUp className="text-sm" />
                   <span className="text-sm font-semibold">{complaint.upvotes?.length || 0}</span>
-                  <p className="lg:block hidden text-sm">Upvote</p>
+                  <p className="lg:block  hidden text-sm">Upvote</p>
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onDownvote(complaint._id);
                   }}
-                  className="flex items-center gap-1 text-theme-secondary hover:text-red-600 transition-colors"
+                  className={`flex items-center gap-1 transition-colors ${
+                    hasDownvoted 
+                      ? 'text-red-600' 
+                      : 'text-theme-secondary hover:text-red-600'
+                  }`}
                   aria-label={`Downvote this complaint currently having ${complaint.downvotes?.length || 0} downvotes`}
                 >
                   <FaThumbsDown className="text-sm" />

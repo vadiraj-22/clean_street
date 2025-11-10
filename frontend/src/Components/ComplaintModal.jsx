@@ -82,13 +82,27 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
                 ...(token && { 'Authorization': `Bearer ${token}` })
               }
             });
+            
+            // If 401 and no user, that's expected - just show empty comments
+            if (res.status === 401 && !currentUser) {
+                setComments([]);
+                setCommentCount(0);
+                return;
+            }
+            
             const data = await res.json();
             if (res.ok) {
                 setComments(data.data);
                 const totalComments = data.data.reduce((acc, comment) => acc + 1 + (comment.replies ? comment.replies.length : 0), 0);
                 setCommentCount(totalComments);
+            } else {
+                console.warn("Could not fetch comments:", data.message);
+                setComments([]);
             }
-        } catch (error) { console.error("Error fetching comments:", error); }
+        } catch (error) { 
+            console.error("Error fetching comments:", error);
+            setComments([]);
+        }
     };
 
     const handlePostComment = async (e, text, parentId = null, imageFile = null) => { 
@@ -101,6 +115,10 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
         if (imageFile) formData.append("image", imageFile);
         try {
             const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error("You must be logged in to comment. Please log in again.");
+            }
+            
             const res = await fetch(`${backendUrl}/api/comments/${complaint._id}`, { 
               method: 'POST', 
               credentials: 'include', 
@@ -117,7 +135,12 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
                 setCommentImage(null);
                 setPreviewImage(null);
                 setActiveReplyId(null);
-            } else { throw new Error(newCommentData.message || "Failed to post comment"); }
+            } else { 
+                if (res.status === 401) {
+                    throw new Error("Your session has expired. Please log in again.");
+                }
+                throw new Error(newCommentData.message || "Failed to post comment"); 
+            }
         } catch (error) {
             console.error("Error adding comment:", error);
             alert(`Error: ${error.message}`);
@@ -342,8 +365,8 @@ const Comment = ({ comment, onLike, onDislike, onDelete, onReplySubmit, currentU
         setIsPostingReply(false);
     };
 
-    const hasLiked = comment.likes?.includes(currentUser?.id);
-    const hasDisliked = comment.dislikes?.includes(currentUser?.id);
+    const hasLiked = comment.likes?.some(id => id === currentUser?._id || id?._id === currentUser?._id);
+    const hasDisliked = comment.dislikes?.some(id => id === currentUser?._id || id?._id === currentUser?._id);
 
     return (
         <div className="flex items-start gap-3 group"> 
@@ -351,7 +374,7 @@ const Comment = ({ comment, onLike, onDislike, onDelete, onReplySubmit, currentU
             <div className="flex-1">
                 <div className="bg-gray-100 p-3 rounded-lg border border-gray-200/80 mb-1 relative">
                      {/* Delete button (on hover) - ALREADY CONDITIONAL, NO CHANGE NEEDED */}
-                     {currentUser?.id === comment.user?._id && (
+                     {currentUser?._id === comment.user?._id && (
                         <button
                             onClick={() => onDelete(comment._id)}
                             className="absolute top-1 right-1 p-1 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-100/50 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
