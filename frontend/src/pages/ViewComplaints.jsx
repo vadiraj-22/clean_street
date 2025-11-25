@@ -100,12 +100,18 @@ const ViewComplaints = () => {
       if (res.ok) {
         const updatedComplaints = complaints.map(complaint => {
           if (complaint._id === complaintId) {
-            // Create arrays based on the counts and user vote status
+            // Update based on server response
             const upvotesArray = data.data.hasUpvoted 
-              ? [...(complaint.upvotes || []).filter(id => id !== user._id && id?._id !== user._id), user._id]
-              : (complaint.upvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+              ? [...(complaint.upvotes || []), user._id]
+              : (complaint.upvotes || []).filter(id => {
+                  const voteId = typeof id === 'object' ? id._id : id;
+                  return voteId?.toString() !== user._id?.toString();
+                });
             
-            const downvotesArray = (complaint.downvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+            const downvotesArray = (complaint.downvotes || []).filter(id => {
+              const voteId = typeof id === 'object' ? id._id : id;
+              return voteId?.toString() !== user._id?.toString();
+            });
             
             return {
               ...complaint,
@@ -152,12 +158,18 @@ const ViewComplaints = () => {
       if (res.ok) {
         const updatedComplaints = complaints.map(complaint => {
           if (complaint._id === complaintId) {
-            // Create arrays based on the counts and user vote status
-            const upvotesArray = (complaint.upvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+            // Update based on server response
+            const upvotesArray = (complaint.upvotes || []).filter(id => {
+              const voteId = typeof id === 'object' ? id._id : id;
+              return voteId?.toString() !== user._id?.toString();
+            });
             
             const downvotesArray = data.data.hasDownvoted 
-              ? [...(complaint.downvotes || []).filter(id => id !== user._id && id?._id !== user._id), user._id]
-              : (complaint.downvotes || []).filter(id => id !== user._id && id?._id !== user._id);
+              ? [...(complaint.downvotes || []), user._id]
+              : (complaint.downvotes || []).filter(id => {
+                  const voteId = typeof id === 'object' ? id._id : id;
+                  return voteId?.toString() !== user._id?.toString();
+                });
             
             return {
               ...complaint,
@@ -247,8 +259,14 @@ const ComplaintCard = ({ complaint, onClick, onUpvote, onDownvote, user }) => {
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' });
 
   // Check if current user has upvoted or downvoted
-  const hasUpvoted = user && complaint.upvotes?.some(vote => vote === user._id || vote?._id === user._id);
-  const hasDownvoted = user && complaint.downvotes?.some(vote => vote === user._id || vote?._id === user._id);
+  const hasUpvoted = user && complaint.upvotes?.some(vote => {
+    const voteId = typeof vote === 'object' ? vote._id : vote;
+    return voteId?.toString() === user._id?.toString();
+  });
+  const hasDownvoted = user && complaint.downvotes?.some(vote => {
+    const voteId = typeof vote === 'object' ? vote._id : vote;
+    return voteId?.toString() === user._id?.toString();
+  });
 
   const getStatusBadge = (status) => {
     // ... (This function remains the same)
