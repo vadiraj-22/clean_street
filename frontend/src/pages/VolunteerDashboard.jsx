@@ -57,10 +57,11 @@ const VolunteerDashboard = () => {
       const headers = {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
-      
-      const nearbyRes = await fetch(`${backendUrl}/api/volunteer/nearby-complaints?maxDistance=50`, {
+
+      const nearbyRes = await fetch(`${backendUrl}/api/volunteer/nearby-complaints?maxDistance=50&_t=${Date.now()}`, {
         credentials: "include",
-        headers
+        headers,
+        cache: "no-store"
       });
       const nearbyData = await nearbyRes.json();
       if (nearbyRes.ok && nearbyData.success) {
@@ -198,9 +199,8 @@ const VolunteerDashboard = () => {
     };
     return (
       <span
-        className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-          styles[status] || "bg-gray-100 text-gray-800 border-gray-200"
-        }`}
+        className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${styles[status] || "bg-gray-100 text-gray-800 border-gray-200"
+          }`}
       >
         {labels[status] || status}
       </span>
@@ -215,9 +215,8 @@ const VolunteerDashboard = () => {
     };
     return (
       <span
-        className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-          styles[priority] || styles.Medium
-        }`}
+        className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${styles[priority] || styles.Medium
+          }`}
       >
         {priority}
       </span>
@@ -427,11 +426,10 @@ const StatCard = ({ icon, value, label }) => (
 const TabButton = ({ id, activeTab, setActiveTab, icon, children }) => (
   <button
     onClick={() => setActiveTab(id)}
-    className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors duration-200 focus:outline-none focus-visible:bg-indigo-50/50 rounded-t whitespace-nowrap ${
-      activeTab === id
+    className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors duration-200 focus:outline-none focus-visible:bg-indigo-50/50 rounded-t whitespace-nowrap ${activeTab === id
         ? "border-indigo-600 text-indigo-600"
         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-    }`}
+      }`}
   >
     {React.cloneElement(icon, { size: 16 })}
     <span>{children}</span>
@@ -484,13 +482,12 @@ const NearbyComplaintCard = ({
       <button
         onClick={() => handleAssignToSelf(complaint._id)}
         disabled={complaint.assigned_to || isLoading}
-        className={`w-full mt-auto py-2 px-4 rounded-md font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${
-          complaint.assigned_to
+        className={`w-full mt-auto py-2 px-4 rounded-md font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${complaint.assigned_to
             ? "bg-gray-200 text-black cursor-not-allowed"
             : isLoading
-            ? "bg-indigo-300 text-white cursor-wait"
-            : "bg-indigo-600 text-white hover:bg-indigo-700"
-        }`}
+              ? "bg-indigo-300 text-white cursor-wait"
+              : "bg-indigo-600 text-white hover:bg-indigo-700"
+          }`}
       >
         {isLoading ? <FiLoader className="animate-spin" /> : <FiUserPlus size={16} />}
         {complaint.assigned_to ? "Assigned" : isLoading ? "Assigning..." : "Assign to Me"}

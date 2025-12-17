@@ -17,7 +17,7 @@ const getCoordinatesFromLocation = async (location) => {
       }
     );
     const data = await response.json();
-    
+
     if (data && data.length > 0) {
       return {
         latitude: parseFloat(data[0].lat),
@@ -26,7 +26,7 @@ const getCoordinatesFromLocation = async (location) => {
     }
     return null;
   } catch (error) {
-    console.error("Geocoding error:", error);
+    console.error(`Geocoding error for location "${location}":`, error);
     return null;
   }
 };
@@ -39,11 +39,11 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Earth's radius in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
 
@@ -63,17 +63,17 @@ export const getNearbyComplaints = async (req, res) => {
 
     // Check if volunteer has location
     if (!volunteer.location) {
-      return res.status(400).json({ 
-        message: "Volunteer location not set. Please update your profile with a location." 
+      return res.status(400).json({
+        message: "Volunteer location not set. Please update your profile with a location."
       });
     }
 
     // Get coordinates from volunteer's location string
     const volunteerCoords = await getCoordinatesFromLocation(volunteer.location);
-    
+
     if (!volunteerCoords) {
-      return res.status(400).json({ 
-        message: "Could not geocode volunteer location. Please ensure location is valid." 
+      return res.status(400).json({
+        message: `Could not geocode location: "${volunteer.location}". Please go to your profile and update it to a valid city or address.`
       });
     }
 
@@ -83,9 +83,9 @@ export const getNearbyComplaints = async (req, res) => {
     const allComplaints = await Complaint.find({
       status: { $in: ["received", "in_review"] }
     })
-    .populate('user_id', 'name email')
-    .populate('assigned_to', 'name email')
-    .sort({ createdAt: -1 });
+      .populate('user_id', 'name email')
+      .populate('assigned_to', 'name email')
+      .sort({ createdAt: -1 });
 
     // Filter complaints by distance
     const nearbyComplaints = allComplaints.filter(complaint => {
@@ -141,11 +141,11 @@ export const getMyAssignments = async (req, res) => {
     }
 
     // Find all complaints assigned to this volunteer
-    const assignments = await Complaint.find({ 
-      assigned_to: volunteerId 
+    const assignments = await Complaint.find({
+      assigned_to: volunteerId
     })
-    .populate('user_id', 'name email')
-    .sort({ createdAt: -1 });
+      .populate('user_id', 'name email')
+      .sort({ createdAt: -1 });
 
     // Calculate statistics
     const totalAssignments = assignments.length;
@@ -198,8 +198,8 @@ export const assignComplaintToSelf = async (req, res) => {
 
     // Check if already assigned
     if (complaint.assigned_to) {
-      return res.status(400).json({ 
-        message: "This complaint is already assigned to another volunteer." 
+      return res.status(400).json({
+        message: "This complaint is already assigned to another volunteer."
       });
     }
 
@@ -246,8 +246,8 @@ export const updateComplaintStatus = async (req, res) => {
     // Validate status
     const validStatuses = ["received", "in_review", "resolved", "rejected"];
     if (!status || !validStatuses.includes(status)) {
-      return res.status(400).json({ 
-        message: "Invalid status. Must be one of: received, in_review, resolved, rejected" 
+      return res.status(400).json({
+        message: "Invalid status. Must be one of: received, in_review, resolved, rejected"
       });
     }
 
@@ -259,8 +259,8 @@ export const updateComplaintStatus = async (req, res) => {
 
     // Check if complaint is assigned to this volunteer
     if (!complaint.assigned_to || complaint.assigned_to.toString() !== volunteerId.toString()) {
-      return res.status(403).json({ 
-        message: "You can only update complaints assigned to you." 
+      return res.status(403).json({
+        message: "You can only update complaints assigned to you."
       });
     }
 
@@ -310,8 +310,8 @@ export const unassignComplaint = async (req, res) => {
 
     // Check if complaint is assigned to this volunteer
     if (!complaint.assigned_to || complaint.assigned_to.toString() !== volunteerId.toString()) {
-      return res.status(403).json({ 
-        message: "You can only unassign complaints assigned to you." 
+      return res.status(403).json({
+        message: "You can only unassign complaints assigned to you."
       });
     }
 
