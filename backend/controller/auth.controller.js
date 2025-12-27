@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import config from "../.config/config.js";
-const { JWT_USER_SECRET, JWT_ADMIN_SECRET,NODE_ENV } = config;
+const { JWT_USER_SECRET, JWT_ADMIN_SECRET,NODE_ENV,ADMIN_PASSKEY } = config;
 
 // Function to generate token and set cookie
 const generateTokenAndSetCookie = (res, user) => {
@@ -23,8 +23,27 @@ const generateTokenAndSetCookie = (res, user) => {
 //Register
 export const register = async (req, res) => {
   try {
-    const { name, email, password, role, location } = req.body;
+    const { name, email, password, role, location, adminPasskey} = req.body;
 
+    // Admin passkey validation
+    if(role === "admin") {
+      if(!adminPasskey || adminPasskey.trim() === ""){
+        return res.status(400).json({message:"Admin passkey is required"})
+      }
+      
+      // Ensure ADMIN_PASSKEY is loaded from config
+      if(!ADMIN_PASSKEY) {
+        console.error("ADMIN_PASSKEY is not configured in environment variables");
+        return res.status(500).json({message:"Server configuration error: Admin passkey not set"})
+      }
+      
+      const receivedKey = adminPasskey.trim();
+      const expectedKey = ADMIN_PASSKEY.trim();
+      
+      if(receivedKey !== expectedKey){
+        return res.status(403).json({message:"Invalid admin passkey"})
+      }
+    }
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });

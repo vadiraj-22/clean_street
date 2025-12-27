@@ -15,6 +15,7 @@ export default function Register() {
     role: "user",
     email: "",
     password: "",
+    adminPasskey: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,11 +36,24 @@ export default function Register() {
     setLoading(true);
     setError("");
     try {
+      // Prepare the request body - only include adminPasskey if role is admin
+      const requestBody = {
+        name: form.name,
+        location: form.location,
+        role: form.role,
+        email: form.email,
+        password: form.password,
+      };
+      
+      if (form.role === "admin") {
+        requestBody.adminPasskey = form.adminPasskey;
+      }
+
       const res = await fetch(`${backend_Url}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: 'include',
-        body: JSON.stringify(form),
+        body: JSON.stringify(requestBody),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Registration failed");
@@ -170,6 +184,31 @@ export default function Register() {
                 </button>
               </div>
             </div>
+
+            {/* Admin Passkey Input - Only shown when role is admin */}
+            {form.role === "admin" && (
+              <div className="animate-fade-in-up">
+                <label htmlFor="adminPasskey" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Admin Passkey <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400 pointer-events-none transition-colors group-focus-within:text-indigo-600">
+                    <FiLock size={18} />
+                  </span>
+                  <input
+                    id="adminPasskey"
+                    type="password"
+                    name="adminPasskey"
+                    placeholder="Enter admin passkey"
+                    className="w-full pl-11 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200 ease-in-out placeholder-gray-400"
+                    value={form.adminPasskey}
+                    onChange={handleChange}
+                    required={form.role === "admin"}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">Required for admin registration</p>
+              </div>
+            )}
 
             {/* Error Message */}
             {error && (
