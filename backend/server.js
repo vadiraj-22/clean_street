@@ -85,12 +85,8 @@ if (!config.JWT_ADMIN_SECRET) {
 
 mongoose.connect(config.MONGO_URL, {
   maxPoolSize: 10, // Maximum number of connections
-  minPoolSize: 2,  // Minimum number of connections
-  maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
   serverSelectionTimeoutMS: 5000, // How long to try selecting a server
   socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-  bufferMaxEntries: 0, // Disable mongoose buffering
-  bufferCommands: false, // Disable mongoose buffering
 })
   .then(() => {
     console.log("✅ MongoDB Connected");
