@@ -58,8 +58,28 @@ app.use("/api/admin", adminRoutes); // Use the routes once
 
 
 // --- Database Connection ---
+console.log("🔍 Environment check:");
+console.log("MONGO_URL:", config.MONGO_URL ? "✅ Set" : "❌ Missing");
+console.log("JWT_USER_SECRET:", config.JWT_USER_SECRET ? "✅ Set" : "❌ Missing");
+console.log("JWT_ADMIN_SECRET:", config.JWT_ADMIN_SECRET ? "✅ Set" : "❌ Missing");
+console.log("PORT:", config.PORT);
+console.log("NODE_ENV:", config.NODE_ENV);
+
 if (!config.MONGO_URL) {
   console.error("❌ MongoDB connection error: MONGO_URL is missing.");
+  console.error("Please set the MONGO_URL environment variable.");
+  process.exit(1);
+}
+
+if (!config.JWT_USER_SECRET) {
+  console.error("❌ JWT_USER_SECRET is missing.");
+  console.error("Please set the JWT_USER_SECRET environment variable.");
+  process.exit(1);
+}
+
+if (!config.JWT_ADMIN_SECRET) {
+  console.error("❌ JWT_ADMIN_SECRET is missing.");
+  console.error("Please set the JWT_ADMIN_SECRET environment variable.");
   process.exit(1);
 }
 
