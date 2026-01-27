@@ -2,12 +2,20 @@ import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import config from "../.config/config.js";
-const { JWT_USER_SECRET, JWT_ADMIN_SECRET,NODE_ENV,ADMIN_PASSKEY } = config;
+
+const { JWT_USER_SECRET, JWT_ADMIN_SECRET, NODE_ENV, ADMIN_PASSKEY } = config;
+
+// Optimize bcrypt rounds for better performance
+const BCRYPT_ROUNDS = NODE_ENV === 'production' ? 12 : 8;
 
 // Function to generate token and set cookie
 const generateTokenAndSetCookie = (res, user) => {
   const secret = user.role === "admin" ? JWT_ADMIN_SECRET : JWT_USER_SECRET;
-  const token = jwt.sign({ id: user._id, role: user.role }, secret, {
+  const token = jwt.sign({ 
+    id: user._id, 
+    role: user.role, 
+    email: user.email 
+  }, secret, {
     expiresIn: "1h",
   });
 
@@ -49,7 +57,7 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const newUser = new User({
       name,
@@ -85,28 +93,41 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    // Input validation
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
 
+    // Find user with lean() for better performance
+    const user = await User.findOne({ email }).lean();
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
+    if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    const token = generateTokenAndSetCookie(res, user);
+    // Convert lean object back to mongoose document for token generation
+    const userDoc = { ...user, _id: user._id, role: user.role, email: user.email };
+    const token = generateTokenAndSetCookie(res, userDoc);
 
     res.status(200).json({
       message: "Login successful",
       token,
       user: { 
         id: user._id,
-         name: user.name, 
-         email: user.email, 
-         role: user.role, 
-         location: user.location,
-        profilePhoto:user.profilePhoto,
-        },
+        name: user.name, 
+        email: user.email, 
+        role: user.role, 
+        location: user.location,
+        profilePhoto: user.profilePhoto,
+      },
     });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };

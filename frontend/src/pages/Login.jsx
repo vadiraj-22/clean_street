@@ -35,15 +35,14 @@ export default function Login() {
 
       toast.success("Login successful!");
 
-      setTimeout(() => {
-        if (data.user.role === "admin") {
-          navigate("/AdminDashboard");
-        } else if (data.user.role === "volunteer") {
-          navigate("/VolunteerDashboard");
-        } else {
-          navigate("/UserDashboard");
-        }
-      }, 100);
+      // Navigate immediately after successful login
+      if (data.user.role === "admin") {
+        navigate("/AdminDashboard");
+      } else if (data.user.role === "volunteer") {
+        navigate("/VolunteerDashboard");
+      } else {
+        navigate("/UserDashboard");
+      }
 
     } catch (err) {
       setError(err.message || 'Login failed. Please check credentials.');

@@ -11,10 +11,23 @@ import cors from "cors";
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
+import { performanceLogger, requestSizeLimiter } from './middleware/performance.middleware.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Request timeout middleware
+app.use((req, res, next) => {
+  res.setTimeout(30000, () => {
+    res.status(408).json({ message: 'Request timeout' });
+  });
+  next();
+});
+
+// Performance monitoring
+app.use(performanceLogger);
+app.use(requestSizeLimiter);
 
 // --- Middleware ---
 app.use(cors({
@@ -26,13 +39,16 @@ app.use(cors({
   credentials: true
 }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Add size limit
 app.use(cookieParser());
 // --- API Routes ---
 app.get("/", (req, res) => {
-  res.send("API is running...");
-}
-);
+  res.json({ 
+    message: "API is running...",
+    timestamp: new Date().toISOString(),
+    status: "healthy"
+  });
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/complaints", complaintRoutes);
@@ -47,7 +63,15 @@ if (!config.MONGO_URL) {
   process.exit(1);
 }
 
-mongoose.connect(config.MONGO_URL)
+mongoose.connect(config.MONGO_URL, {
+  maxPoolSize: 10, // Maximum number of connections
+  minPoolSize: 2,  // Minimum number of connections
+  maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+  serverSelectionTimeoutMS: 5000, // How long to try selecting a server
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  bufferMaxEntries: 0, // Disable mongoose buffering
+  bufferCommands: false, // Disable mongoose buffering
+})
   .then(() => {
     console.log("✅ MongoDB Connected");
     app.listen(config.PORT, () => {

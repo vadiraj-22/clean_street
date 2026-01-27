@@ -18,19 +18,17 @@ export const protect = async (req, res, next) => {
   }
 
   try {
-    let decoded;
+    // First decode without verification to check role
+    const payload = jwt.decode(token);
+    const secret = payload.role === 'admin' ? JWT_ADMIN_SECRET : JWT_USER_SECRET;
+    const decoded = jwt.verify(token, secret);
 
-    
-    try {
-      decoded = jwt.verify(token, JWT_USER_SECRET);
-    } catch (err) {
-      decoded = jwt.verify(token, JWT_ADMIN_SECRET);
-    }
-
-    req.user = await User.findById(decoded.id).select("-password");
-    if (!req.user) {
-      return res.status(401).json({ message: "Not authorized, user not found" });
-    }
+    // Store minimal user data in JWT to avoid DB lookup
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      email: decoded.email
+    };
 
     next();
   } catch (err) {

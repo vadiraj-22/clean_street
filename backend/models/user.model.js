@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Add indexes for faster lookups during login
+userSchema.index({ email: 1 });
+userSchema.index({ email: 1, role: 1 }); // Compound index for email + role queries
+
 const User = mongoose.model("User", userSchema);
 
 export default User;
