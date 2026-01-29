@@ -6,15 +6,17 @@ import config from "../.config/config.js";
 const { JWT_USER_SECRET, JWT_ADMIN_SECRET, NODE_ENV, ADMIN_PASSKEY } = config;
 
 // Optimize bcrypt rounds for better performance
-const BCRYPT_ROUNDS = NODE_ENV === 'production' ? 12 : 8;
+// 10 rounds provides excellent security while keeping login fast (~100-150ms for hash comparison)
+// 12 rounds adds ~150-200ms extra latency with minimal security benefit
+const BCRYPT_ROUNDS = NODE_ENV === 'production' ? 10 : 8;
 
 // Function to generate token and set cookie
 const generateTokenAndSetCookie = (res, user) => {
   const secret = user.role === "admin" ? JWT_ADMIN_SECRET : JWT_USER_SECRET;
-  const token = jwt.sign({ 
-    id: user._id, 
-    role: user.role, 
-    email: user.email 
+  const token = jwt.sign({
+    id: user._id,
+    role: user.role,
+    email: user.email
   }, secret, {
     expiresIn: "1h",
   });
@@ -31,25 +33,25 @@ const generateTokenAndSetCookie = (res, user) => {
 //Register
 export const register = async (req, res) => {
   try {
-    const { name, email, password, role, location, adminPasskey} = req.body;
+    const { name, email, password, role, location, adminPasskey } = req.body;
 
     // Admin passkey validation
-    if(role === "admin") {
-      if(!adminPasskey || adminPasskey.trim() === ""){
-        return res.status(400).json({message:"Admin passkey is required"})
+    if (role === "admin") {
+      if (!adminPasskey || adminPasskey.trim() === "") {
+        return res.status(400).json({ message: "Admin passkey is required" })
       }
-      
+
       // Ensure ADMIN_PASSKEY is loaded from config
-      if(!ADMIN_PASSKEY) {
+      if (!ADMIN_PASSKEY) {
         console.error("ADMIN_PASSKEY is not configured in environment variables");
-        return res.status(500).json({message:"Server configuration error: Admin passkey not set"})
+        return res.status(500).json({ message: "Server configuration error: Admin passkey not set" })
       }
-      
+
       const receivedKey = adminPasskey.trim();
       const expectedKey = ADMIN_PASSKEY.trim();
-      
-      if(receivedKey !== expectedKey){
-        return res.status(403).json({message:"Invalid admin passkey"})
+
+      if (receivedKey !== expectedKey) {
+        return res.status(403).json({ message: "Invalid admin passkey" })
       }
     }
     const existingUser = await User.findOne({ email });
@@ -80,7 +82,7 @@ export const register = async (req, res) => {
         email: newUser.email,
         role: newUser.role,
         location: newUser.location,
-        profilePhoto:newUser.profilePhoto,
+        profilePhoto: newUser.profilePhoto,
       },
     });
   } catch (err) {
@@ -99,7 +101,10 @@ export const login = async (req, res) => {
     }
 
     // Find user with lean() for better performance
-    const user = await User.findOne({ email }).lean();
+    // Select only fields needed for login to reduce data transfer
+    const user = await User.findOne({ email })
+      .select('_id name email password role location profilePhoto')
+      .lean();
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -117,11 +122,11 @@ export const login = async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       token,
-      user: { 
+      user: {
         id: user._id,
-        name: user.name, 
-        email: user.email, 
-        role: user.role, 
+        name: user.name,
+        email: user.email,
+        role: user.role,
         location: user.location,
         profilePhoto: user.profilePhoto,
       },

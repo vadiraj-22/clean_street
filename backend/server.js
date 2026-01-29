@@ -11,6 +11,7 @@ import cors from "cors";
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { performanceLogger, requestSizeLimiter } from './middleware/performance.middleware.js';
 
 const app = express();
@@ -29,6 +30,9 @@ app.use((req, res, next) => {
 app.use(performanceLogger);
 app.use(requestSizeLimiter);
 
+// Gzip compression for faster response delivery
+app.use(compression());
+
 // --- Middleware ---
 app.use(cors({
   origin: [
@@ -43,7 +47,7 @@ app.use(express.json({ limit: '10mb' })); // Add size limit
 app.use(cookieParser());
 // --- API Routes ---
 app.get("/", (req, res) => {
-  res.json({ 
+  res.json({
     message: "API is running...",
     timestamp: new Date().toISOString(),
     status: "healthy"
@@ -98,4 +102,4 @@ mongoose.connect(config.MONGO_URL, {
     console.error("❌ MongoDB connection error:", err);
     process.exit(1);
   }
-);
+  );

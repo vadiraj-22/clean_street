@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true, 
+      required: true,
     },
     location: {
       type: String,
@@ -35,9 +35,12 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Add indexes for faster lookups during login
-userSchema.index({ email: 1 });
-userSchema.index({ email: 1, role: 1 }); // Compound index for email + role queries
+// Optimized index for login lookups
+// The compound index {email: 1, role: 1} covers both:
+// - Queries by email only (uses index prefix matching)
+// - Queries by email AND role
+// No need for a separate email-only index (would be redundant and slow down writes)
+userSchema.index({ email: 1, role: 1 });
 
 const User = mongoose.model("User", userSchema);
 

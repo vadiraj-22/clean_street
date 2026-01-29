@@ -79,7 +79,7 @@ export default function Login() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-gray-100 animate-fade-in-up">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">Sign In</h2>
+            <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
             <p className="text-gray-500 mt-2">Access your Clean Street account.</p>
           </div>
 
