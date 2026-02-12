@@ -54,7 +54,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
  */
 export const getNearbyComplaints = async (req, res) => {
   try {
-    const volunteerId = req.user._id;
+    const volunteerId = req.user.id;
     const volunteer = await User.findById(volunteerId);
 
     if (!volunteer || volunteer.role !== "volunteer") {
@@ -134,7 +134,7 @@ export const getNearbyComplaints = async (req, res) => {
  */
 export const getMyAssignments = async (req, res) => {
   try {
-    const volunteerId = req.user._id;
+    const volunteerId = req.user.id;
 
     if (req.user.role !== "volunteer") {
       return res.status(403).json({ message: "Access denied. Volunteers only." });
@@ -179,7 +179,7 @@ export const getMyAssignments = async (req, res) => {
  */
 export const assignComplaintToSelf = async (req, res) => {
   try {
-    const volunteerId = req.user._id;
+    const volunteerId = req.user.id;
     const { complaintId } = req.params;
 
     if (req.user.role !== "volunteer") {
@@ -231,7 +231,7 @@ export const assignComplaintToSelf = async (req, res) => {
  */
 export const updateComplaintStatus = async (req, res) => {
   try {
-    const volunteerId = req.user._id;
+    const volunteerId = req.user.id;
     const { complaintId } = req.params;
     const { status } = req.body;
 
@@ -291,7 +291,7 @@ export const updateComplaintStatus = async (req, res) => {
  */
 export const unassignComplaint = async (req, res) => {
   try {
-    const volunteerId = req.user._id;
+    const volunteerId = req.user.id;
     const { complaintId } = req.params;
 
     if (req.user.role !== "volunteer") {

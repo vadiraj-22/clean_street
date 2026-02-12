@@ -25,7 +25,7 @@ export const addComment = async (req, res) => {
   try {
     const { complaintId } = req.params;
     const { text, parentCommentId } = req.body;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const complaint = await Complaint.findById(complaintId);
     if (!complaint) {
@@ -74,7 +74,7 @@ export const addComment = async (req, res) => {
 export const likeComment = async (req, res) => {
   try {
     const { commentId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const comment = await Comment.findById(commentId);
     if (!comment) return res.status(404).json({ message: 'Comment not found' });
@@ -101,7 +101,7 @@ export const likeComment = async (req, res) => {
 export const dislikeComment = async (req, res) => {
   try {
     const { commentId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const comment = await Comment.findById(commentId);
     if (!comment) return res.status(404).json({ message: 'Comment not found' });
@@ -129,7 +129,7 @@ export const dislikeComment = async (req, res) => {
 export const deleteComment = async (req, res) => {
     try {
         const { commentId } = req.params;
-        const userId = req.user._id;
+        const userId = req.user.id;
 
         const comment = await Comment.findById(commentId);
 

@@ -2,7 +2,7 @@ import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
 export const getUserProfile = async (req, res) => {
   try { 
-    const user = await User.findById(req.user._id).select("-password"); // Exclude password from the result
+    const user = await User.findById(req.user.id).select("-password"); // Exclude password from the result
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -15,7 +15,7 @@ export const getUserProfile = async (req, res) => {
 };
 export const updateUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -37,6 +37,7 @@ export const updateUserProfile = async (req, res) => {
     const updatedUser = await user.save();
 
     res.status(200).json({
+      _id: updatedUser._id,
       id: updatedUser._id,
       name: updatedUser.name,
       email: updatedUser.email,
@@ -50,7 +51,7 @@ export const updateUserProfile = async (req, res) => {
 };
 export const updateProfilePhoto = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user.id);
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -67,6 +68,7 @@ export const updateProfilePhoto = async (req, res) => {
             message: "Profile photo updated successfully",
             profilePhoto: user.profilePhoto,
             user: {
+                _id: user._id,
                 id: user._id,
                 name: user.name,
                 email: user.email,
@@ -89,7 +91,7 @@ export const updatePassword = async (req, res) => {
         return res.status(400).json({ message: "Please provide both old and new passwords." });
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

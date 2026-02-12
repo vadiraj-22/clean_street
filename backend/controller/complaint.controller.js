@@ -9,6 +9,11 @@ import mongoose from "mongoose";
  */
 export const createComplaint = async (req, res) => {
   try {
+    // Check if user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Authentication required. Please log in." });
+    }
+
     // Destructure all expected fields from the request body
     const {
       title,
@@ -37,7 +42,15 @@ export const createComplaint = async (req, res) => {
     }
 
     // The user ID is attached to `req.user` by the authentication middleware
-    const userId = req.user._id;
+    const userId = req.user.id;
+
+    // Parse coordinates to numbers
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ message: "Invalid coordinates provided." });
+    }
 
     // Create a new complaint instance
     const newComplaint = new Complaint({
@@ -52,7 +65,7 @@ export const createComplaint = async (req, res) => {
       location_coords: {
         type: "Point",
         // GeoJSON format requires [longitude, latitude]
-        coordinates: [longitude, latitude],
+        coordinates: [lng, lat],
       },
     });
 
@@ -65,7 +78,10 @@ export const createComplaint = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating complaint:", error);
-    res.status(500).json({ message: "Server error. Could not create the report." });
+    res.status(500).json({ 
+      message: "Server error. Could not create the report.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -145,7 +161,7 @@ export const updateComplaint = async (req, res) => {
  */
 export const getUserComplaints = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     // Get all complaints for the user
     const complaints = await Complaint.find({ user_id: userId })
@@ -185,7 +201,7 @@ export const getUserComplaints = async (req, res) => {
  */
 export const getAllUserComplaints = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -228,7 +244,7 @@ export const getAllUserComplaints = async (req, res) => {
 export const deleteComplaint = async (req, res) => {
   try {
     const complaintId = req.params.id;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     // Check for a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(complaintId)) {
@@ -288,10 +304,14 @@ export const getCommunityComplaints = async (req, res) => {
 export const upvoteComplaint = async (req, res) => {
   try {
     const complaintId = req.params.id;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     if (!mongoose.Types.ObjectId.isValid(complaintId)) {
       return res.status(400).json({ message: "Invalid complaint ID." });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID." });
     }
 
     const complaint = await Complaint.findById(complaintId);
@@ -300,9 +320,12 @@ export const upvoteComplaint = async (req, res) => {
       return res.status(404).json({ message: "Complaint not found." });
     }
 
-    // Check if user already upvoted
-    const hasUpvoted = complaint.upvotes.includes(userId);
-    const hasDownvoted = complaint.downvotes.includes(userId);
+    // Filter out null values and check if user already upvoted
+    complaint.upvotes = complaint.upvotes.filter(id => id != null);
+    complaint.downvotes = complaint.downvotes.filter(id => id != null);
+    
+    const hasUpvoted = complaint.upvotes.some(id => id.toString() === userId.toString());
+    const hasDownvoted = complaint.downvotes.some(id => id.toString() === userId.toString());
 
     if (hasUpvoted) {
       // Remove upvote
@@ -330,7 +353,7 @@ export const upvoteComplaint = async (req, res) => {
 
   } catch (error) {
     console.error("Error upvoting complaint:", error);
-    res.status(500).json({ message: "Server error. Could not upvote complaint." });
+    res.status(500).json({ message: "Server error. Could not upvote complaint.", error: error.message });
   }
 };
 
@@ -342,10 +365,14 @@ export const upvoteComplaint = async (req, res) => {
 export const downvoteComplaint = async (req, res) => {
   try {
     const complaintId = req.params.id;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     if (!mongoose.Types.ObjectId.isValid(complaintId)) {
       return res.status(400).json({ message: "Invalid complaint ID." });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID." });
     }
 
     const complaint = await Complaint.findById(complaintId);
@@ -354,9 +381,12 @@ export const downvoteComplaint = async (req, res) => {
       return res.status(404).json({ message: "Complaint not found." });
     }
 
-    // Check if user already downvoted
-    const hasUpvoted = complaint.upvotes.includes(userId);
-    const hasDownvoted = complaint.downvotes.includes(userId);
+    // Filter out null values and check if user already downvoted
+    complaint.upvotes = complaint.upvotes.filter(id => id != null);
+    complaint.downvotes = complaint.downvotes.filter(id => id != null);
+    
+    const hasUpvoted = complaint.upvotes.some(id => id.toString() === userId.toString());
+    const hasDownvoted = complaint.downvotes.some(id => id.toString() === userId.toString());
 
     if (hasDownvoted) {
       // Remove downvote
@@ -384,6 +414,6 @@ export const downvoteComplaint = async (req, res) => {
 
   } catch (error) {
     console.error("Error downvoting complaint:", error);
-    res.status(500).json({ message: "Server error. Could not downvote complaint." });
+    res.status(500).json({ message: "Server error. Could not downvote complaint.", error: error.message });
   }
 };

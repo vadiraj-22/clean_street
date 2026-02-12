@@ -106,6 +106,15 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
       setStatusMessage({ type: 'error', text: "Please select a location on the map." }); //
       return; //
     }
+    
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setStatusMessage({ type: 'error', text: "You must be logged in to report an issue. Redirecting to login..." });
+      setTimeout(() => navigate("/login"), 2000);
+      return;
+    }
+    
     setLoading(true); //
     setStatusMessage({ type: '', text: '' }); // Clear previous messages
     const formData = new FormData(); //
@@ -115,13 +124,12 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
     if (photo) formData.append("photo", photo); //
 
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`${backend_Url}/api/complaints/create`, { //
         method: "POST", 
         credentials: "include", 
         body: formData,
         headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` })
+          'Authorization': `Bearer ${token}`
         }
       });
       const data = await res.json(); //

@@ -24,7 +24,7 @@ const ProfilePhotoStorage= new CloudinaryStorage({
     return {
       folder: "cleanstreet/users",
       allowed_formats: ["jpg", "jpeg", "png", "webp"],
-      public_id: `user_${req.user?._id || "anonymous"}_${Date.now()}`,
+      public_id: `user_${req.user?.id || "anonymous"}_${Date.now()}`,
       transformation: [{ width: 512, height: 512, crop: "limit" }],
       // resource_type defaults to 'image'
     };
@@ -40,7 +40,7 @@ const complaintStorage = new CloudinaryStorage({
     return {
       folder: "cleanstreet/complaints",
       allowed_formats: ["jpg", "jpeg", "png", "webp"],
-      public_id: `complaint_${req.user?._id || "anonymous"}_${Date.now()}`,
+      public_id: `complaint_${req.user?.id || "anonymous"}_${Date.now()}`,
       transformation: [{ width: 1024, height: 1024, crop: "limit" }],
     };
   },
@@ -54,7 +54,7 @@ const commentImageStorage = new CloudinaryStorage({
     return {
       folder: "cleanstreet/comments",
       allowed_formats: ["jpg", "jpeg", "png", "webp"],
-      public_id: `complaint_${req.user?._id || "anonymous"}_${Date.now()}`,
+      public_id: `complaint_${req.user?.id || "anonymous"}_${Date.now()}`,
       transformation: [{ width: 1024, height: 1024, crop: "limit" }],
     };
   },

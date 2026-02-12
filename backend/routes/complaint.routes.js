@@ -20,6 +20,11 @@ const router = express.Router();
 // It looks for a single file in a form field named 'photo'.
 router.post("/create", protect, uploadComplaintPhoto.single('photo'), createComplaint);
 
+// Test endpoint to verify auth is working
+router.get("/test-auth", protect, (req, res) => {
+  res.json({ message: "Auth working!", user: req.user });
+});
+
 
 /**
  * @route   PATCH /api/complaints/:id
