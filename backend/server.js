@@ -38,7 +38,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "https://clean-street.vercel.app",
-    "https://civicfix-three.vercel.app/"
+    "https://civicfix-three.vercel.app"
   ],
   credentials: true
 }));
