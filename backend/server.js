@@ -37,8 +37,8 @@ app.use(compression());
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://infosys-spring-board-clean-p-roject.vercel.app",
-    "https://clean-street.vercel.app"
+    "https://clean-street.vercel.app",
+    "https://civicfix-three.vercel.app/"
   ],
   credentials: true
 }));
