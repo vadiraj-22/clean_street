@@ -281,14 +281,37 @@ export const deleteComplaint = async (req, res) => {
  */
 export const getCommunityComplaints = async (req, res) => {
   try {
-    const complaints = await Complaint.find({})
-      .sort({ createdAt: -1 })
-      .populate('user_id', 'name profilePhoto') // <<< MODIFIED: Added profilePhoto
-      .populate('comments');
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const [complaints, total] = await Promise.all([
+      Complaint.find({})
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('user_id', 'name profilePhoto'),
+      Complaint.countDocuments({})
+    ]);
+
+    const result = complaints.map(c => {
+      const obj = c.toObject();
+      obj.commentCount = Array.isArray(obj.comments) ? obj.comments.length : 0;
+      delete obj.comments;
+      return obj;
+    });
 
     res.status(200).json({
       success: true,
-      data: complaints,
+      data: {
+        complaints: result,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
     });
   } catch (error) {
     console.error("Error fetching community complaints:", error);

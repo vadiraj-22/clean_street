@@ -29,7 +29,7 @@ const ViewComplaints = () => {
     const fetchComplaints = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${backend_Url}/api/complaints/community`, {
+        const res = await fetch(`${backend_Url}/api/complaints/community?page=1&limit=20`, {
           credentials: 'include',
           headers: {
             ...(token && { 'Authorization': `Bearer ${token}` })
@@ -37,10 +37,8 @@ const ViewComplaints = () => {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-
-          const complaintsWithComments = data.data.map(c => ({ ...c, comments: Array.isArray(c.comments) ? c.comments : [] }));
-
-          const sortedComplaints = complaintsWithComments.sort((a, b) => {
+          const complaintsData = data.data.complaints || [];
+          const sortedComplaints = complaintsData.sort((a, b) => {
             const netVotesA = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
             const netVotesB = (b.upvotes?.length || 0) - (b.downvotes?.length || 0);
             return netVotesB - netVotesA;
@@ -71,10 +69,10 @@ const ViewComplaints = () => {
   };
 
 
-  const updateCommentCount = (complaintId, newComment) => {
+  const updateCommentCount = (complaintId) => {
     setComplaints(complaints.map(complaint =>
       complaint._id === complaintId
-        ? { ...complaint, comments: [...(Array.isArray(complaint.comments) ? complaint.comments : []), newComment] }
+        ? { ...complaint, commentCount: (complaint.commentCount ?? 0) + 1 }
         : complaint
     ));
   };
@@ -404,9 +402,9 @@ const ComplaintCard = ({ complaint, onClick, onUpvote, onDownvote, user }) => {
                   <span className="text-sm font-semibold">{complaint.downvotes?.length || 0}</span>
                   <p className="lg:block hidden text-sm">Downvote</p>
                 </button>
-                <div className="flex items-center gap-1.5 text-theme-secondary text-sm" aria-label={`${complaint.comments?.length || 0} comments`}>
+                <div className="flex items-center gap-1.5 text-theme-secondary text-sm" aria-label={`${complaint.commentCount ?? 0} comments`}>
                   <FaRegComment />
-                  <span>{complaint.comments?.length || 0}</span>
+                  <span>{complaint.commentCount ?? 0}</span>
                 </div>
               </div>
             ) : (

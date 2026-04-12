@@ -35,12 +35,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Optimized index for login lookups
-// The compound index {email: 1, role: 1} covers both:
-// - Queries by email only (uses index prefix matching)
-// - Queries by email AND role
-// No need for a separate email-only index (would be redundant and slow down writes)
-userSchema.index({ email: 1, role: 1 });
+// Note: email index is automatically created by unique: true on the email field above
 
 const User = mongoose.model("User", userSchema);
 
