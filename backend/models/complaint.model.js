@@ -21,7 +21,7 @@ const complaintSchema = new mongoose.Schema(
     type: {
         type: String,
         required: [true, "Issue type is required"],
-        enum: ["Garbage", "Road Damage", "Street Light", "Water Leakage"],
+        enum: ["Garbage", "Road Damage", "Street Light", "Water Leakage", "Drainage"],
     },
     // Corresponds to the 'priority' dropdown
     priority: {

@@ -187,7 +187,7 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
                         <div className="space-y-5"> {/* Reduced space-y-6 to space-y-5 */}
                             <InputField label="Issue Title" name="title" value={form.title} onChange={handleChange} placeholder="e.g., Overflowing bin on Park Ave" required />
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                <SelectField label="Issue Type" name="type" value={form.type} onChange={handleChange} required options={["Garbage", "Road Damage", "Street Light", "Water Leakage","Drinage"]} />
+                                <SelectField label="Issue Type" name="type" value={form.type} onChange={handleChange} required options={["Garbage", "Road Damage", "Street Light", "Water Leakage", "Drainage"]} />
                                 <SelectField label="Priority Level" name="priority" value={form.priority} onChange={handleChange} required options={["Low", "Medium", "High"]} />
                             </div>
                             <InputField label="Full Address / Location Description" name="address" value={form.address} onChange={handleChange} placeholder="e.g., 123 Main St, near the bus stop" required />
