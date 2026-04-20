@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Clean Street Logo](frontend/public/images/logo.png)
+![Clean Street Logo](frontend/public/images/hero1.png)
 
 **A Smart Civic Engagement Platform for Reporting and Managing Street Cleanliness Issues**
 
