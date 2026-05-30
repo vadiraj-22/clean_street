@@ -1,8 +1,7 @@
 // src/Components/Hero.jsx
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { FiArrowRight, FiMapPin, FiUsers, FiClock } from 'react-icons/fi'; // Updated icons for relevance
+import { FiMapPin, FiUsers, FiClock } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 
 const Hero = () => {
@@ -39,22 +38,6 @@ const Hero = () => {
                     <p className="mt-4 text-gray-200 text-base sm:text-lg md:text-xl max-w-2xl mx-auto animate-fade-in-up duration-700 ease-out delay-200 drop-shadow">
                         Report street issues easily, track their resolution, and collaborate with your community for a better neighborhood. Your action matters.
                     </p>
-
-                     {/* === === === === === === === === === === === === */}
-                     {/* === BUTTON REMOVED AS REQUESTED === */}
-                     {/*
-                     <Link
-                        to="/register"
-                        className={`mt-10 inline-flex items-center gap-2.5 px-8 py-3 text-base font-semibold rounded-lg shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-opacity-50 animate-fade-in-up delay-400 ${
-                            isDarkMode
-                                ? 'bg-[#FFC300] text-black hover:bg-[#FFD60A] focus:ring-[#FFC300]'
-                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white focus:ring-blue-300'
-                        }`}
-                    >
-                        Get Started <FiArrowRight className={`ml-1 ${isDarkMode ? 'text-black' : 'text-blue-200'}`} size={18} />
-                    </Link>
-                    */}
-                    {/* === === === === === === === === === === === === */}
 
                 </div>
 

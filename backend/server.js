@@ -60,6 +60,20 @@ app.use("/api/volunteer", volunteerRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/admin", adminRoutes); // Use the routes once
 
+// 404 handler — catch unmatched routes and return JSON
+app.use((req, res, next) => {
+  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
+// Global error handler — always return JSON, never HTML
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+  });
+});
+
 
 // --- Database Connection ---
 console.log("🔍 Environment check:");

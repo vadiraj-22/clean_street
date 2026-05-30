@@ -1,6 +1,6 @@
 // src/pages/VolunteerDashboard.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +17,9 @@ import {
   FiUserMinus,
   FiRotateCw,
   FiActivity,
+  FiUpload,
+  FiX,
+  FiCamera,
 } from "react-icons/fi";
 import { Toaster, toast } from "react-hot-toast";
 
@@ -36,6 +39,10 @@ const VolunteerDashboard = () => {
   const [volunteerLocation, setVolunteerLocation] = useState("");
   const [actionLoading, setActionLoading] = useState({});
   const [activities, setActivities] = useState([]); // ✅ NEW STATE FOR ADMIN LOGS
+  const [resolveModal, setResolveModal] = useState({ open: false, complaintId: null });
+  const [resolvePhoto, setResolvePhoto] = useState(null);
+  const [resolvePreview, setResolvePreview] = useState(null);
+  const [resolveLoading, setResolveLoading] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user"));
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
@@ -182,6 +189,64 @@ const VolunteerDashboard = () => {
       ),
       { duration: 6000 }
     );
+  };
+
+  const openResolveModal = (complaintId) => {
+    setResolvePhoto(null);
+    setResolvePreview(null);
+    setResolveModal({ open: true, complaintId });
+  };
+
+  const closeResolveModal = () => {
+    setResolveModal({ open: false, complaintId: null });
+    setResolvePhoto(null);
+    setResolvePreview(null);
+  };
+
+  const handleResolvePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image must be under 10MB.");
+        return;
+      }
+      setResolvePhoto(file);
+      setResolvePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleResolveSubmit = async () => {
+    if (!resolvePhoto) {
+      toast.error("Please upload a proof photo before resolving.");
+      return;
+    }
+    setResolveLoading(true);
+    const token = localStorage.getItem("token");
+    const formData = new FormData();
+    formData.append("resolvedPhoto", resolvePhoto);
+    try {
+      const res = await fetch(
+        `${backendUrl}/api/volunteer/resolve/${resolveModal.complaintId}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success("Complaint resolved with proof photo!");
+        closeResolveModal();
+        fetchData();
+      } else {
+        throw new Error(data.message || "Failed to resolve complaint.");
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setResolveLoading(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -396,6 +461,7 @@ const VolunteerDashboard = () => {
                         getPriorityBadge={getPriorityBadge}
                         handleUpdateStatus={handleUpdateStatus}
                         handleUnassign={handleUnassign}
+                        openResolveModal={openResolveModal}
                         isLoading={actionLoading[complaint._id]}
                       />
                     ))}
@@ -407,6 +473,65 @@ const VolunteerDashboard = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Resolve with Photo Modal */}
+      {resolveModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(30,41,59,0.7)", backdropFilter: "blur(6px)" }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <FiCamera className="text-green-600" /> Resolve Issue
+              </h2>
+              <button onClick={closeResolveModal} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
+                <FiX size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              Upload a photo proving the issue has been resolved. This is <span className="font-semibold text-gray-800">mandatory</span> and will be visible to the reporter.
+            </p>
+
+            {/* Photo Upload Area */}
+            <div className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${resolvePreview ? "border-green-300 bg-green-50" : "border-gray-300 hover:border-indigo-400 hover:bg-indigo-50/30"}`}>
+              {resolvePreview ? (
+                <div className="relative inline-block">
+                  <img src={resolvePreview} alt="Resolution proof" className="max-h-48 rounded-md object-contain mx-auto border border-gray-200" />
+                  <button
+                    type="button"
+                    onClick={() => { setResolvePhoto(null); setResolvePreview(null); }}
+                    className="absolute -top-2 -right-2 p-1 bg-red-600 text-white rounded-full shadow hover:scale-110 transition-transform"
+                  >
+                    <FiX size={12} />
+                  </button>
+                </div>
+              ) : (
+                <label htmlFor="resolve-photo-input" className="cursor-pointer flex flex-col items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors">
+                  <FiUpload size={32} />
+                  <span className="text-sm font-medium">Click to upload proof photo</span>
+                  <span className="text-xs text-gray-400">JPG, PNG up to 10MB</span>
+                  <input id="resolve-photo-input" type="file" accept="image/*" className="hidden" onChange={handleResolvePhotoChange} />
+                </label>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeResolveModal}
+                disabled={resolveLoading}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResolveSubmit}
+                disabled={resolveLoading || !resolvePhoto}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 text-white font-semibold text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {resolveLoading ? <><FiLoader className="animate-spin" size={16} /> Resolving...</> : <><FiCheckCircle size={16} /> Mark Resolved</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -503,18 +628,30 @@ const AssignedComplaintCard = ({
   getPriorityBadge,
   handleUpdateStatus,
   handleUnassign,
+  openResolveModal,
   isLoading,
 }) => (
   <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg transform hover:-translate-y-1 group flex flex-col">
-    {complaint.photo && (
-      <div className="h-40 bg-gray-100 overflow-hidden">
-        <img
-          src={complaint.photo}
-          alt={complaint.title}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+    {/* Before / After images */}
+    {complaint.resolvedPhoto ? (
+      <div className="grid grid-cols-2 h-40">
+        <div className="relative overflow-hidden bg-gray-100">
+          <span className="absolute top-1 left-1 z-10 text-xs font-bold bg-black/50 text-white px-1.5 py-0.5 rounded">Before</span>
+          {complaint.photo
+            ? <img src={complaint.photo} alt="Before" className="w-full h-full object-cover" />
+            : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No photo</div>}
+        </div>
+        <div className="relative overflow-hidden bg-gray-100">
+          <span className="absolute top-1 left-1 z-10 text-xs font-bold bg-green-600/80 text-white px-1.5 py-0.5 rounded">After</span>
+          <img src={complaint.resolvedPhoto} alt="After" className="w-full h-full object-cover" />
+        </div>
       </div>
-    )}
+    ) : complaint.photo ? (
+      <div className="h-40 bg-gray-100 overflow-hidden">
+        <img src={complaint.photo} alt={complaint.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+      </div>
+    ) : null}
+
     <div className="p-4 flex flex-col flex-grow">
       <div className="flex justify-between items-start gap-2 mb-2">
         {getStatusBadge(complaint.status)}
@@ -524,58 +661,49 @@ const AssignedComplaintCard = ({
         {complaint.title}
       </h3>
       <div className="space-y-1 text-xs text-gray-500 mb-3">
-        <p>
-          <span className="font-medium text-gray-600">Type:</span> {complaint.type}
-        </p>
-        <p>
-          <span className="font-medium text-gray-600">Reported:</span> {formatDate(complaint.createdAt)}
-        </p>
+        <p><span className="font-medium text-gray-600">Type:</span> {complaint.type}</p>
+        <p><span className="font-medium text-gray-600">Reported:</span> {formatDate(complaint.createdAt)}</p>
       </div>
       <div className="flex items-start text-xs text-gray-500 mb-4">
         <FiMapPin className="mr-1.5 mt-0.5 flex-shrink-0 text-gray-400" size={12} />
         <span className="line-clamp-2 leading-snug">{complaint.address}</span>
       </div>
-      <div className="mt-auto space-y-2 pt-3 border-t border-gray-100">
-        <label className="text-xs font-semibold text-gray-500 block mb-1">
-          Update Status:
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {complaint.status !== "in_review" && (
-            <StatusButton
-              onClick={() => handleUpdateStatus(complaint._id, "in_review")}
-              isLoading={isLoading}
-              className="bg-blue-600 text-white hover:bg-blue-700"
-            >
-              In Progress
-            </StatusButton>
-          )}
-          {complaint.status !== "resolved" && (
-            <StatusButton
-              onClick={() => handleUpdateStatus(complaint._id, "resolved")}
-              isLoading={isLoading}
-              className="bg-green-100 text-green-700 hover:bg-green-200"
-            >
-              Resolved
-            </StatusButton>
-          )}
-          {complaint.status !== "rejected" && (
-            <StatusButton
-              onClick={() => handleUpdateStatus(complaint._id, "rejected")}
-              isLoading={isLoading}
-              className="bg-red-100 text-red-700 hover:bg-red-200"
-            >
-              Reject
-            </StatusButton>
-          )}
-          <StatusButton
-            onClick={() => handleUnassign(complaint._id)}
-            isLoading={isLoading}
-            className="bg-gray-100 text-gray-700 hover:bg-gray-200"
-          >
-            <FiUserMinus size={14} className="inline mr-1" /> Unassign
-          </StatusButton>
+      {complaint.status === "resolved" && (
+        <div className="mt-auto pt-3 border-t border-gray-100 grid grid-cols-2 gap-2">
+          <div className="bg-gray-50 rounded-lg px-3 py-2">
+            <p className="text-xs text-gray-400 font-medium mb-0.5">Reported</p>
+            <p className="text-xs font-semibold text-gray-700">{formatDate(complaint.createdAt)}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg px-3 py-2">
+            <p className="text-xs text-green-500 font-medium mb-0.5">Resolved</p>
+            <p className="text-xs font-semibold text-green-700">{formatDate(complaint.updatedAt)}</p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {complaint.status !== "resolved" && (
+        <div className="mt-auto space-y-2 pt-3 border-t border-gray-100">
+          <label className="text-xs font-semibold text-gray-500 block mb-1">Update Status:</label>
+          <div className="grid grid-cols-2 gap-2">
+            {complaint.status !== "in_review" && (
+              <StatusButton onClick={() => handleUpdateStatus(complaint._id, "in_review")} isLoading={isLoading} className="bg-blue-600 text-white hover:bg-blue-700">
+                In Progress
+              </StatusButton>
+            )}
+            <StatusButton onClick={() => openResolveModal(complaint._id)} isLoading={isLoading} className="bg-green-100 text-green-700 hover:bg-green-200">
+              <FiCamera size={13} className="inline mr-1" /> Resolve
+            </StatusButton>
+            {complaint.status !== "rejected" && (
+              <StatusButton onClick={() => handleUpdateStatus(complaint._id, "rejected")} isLoading={isLoading} className="bg-red-100 text-red-700 hover:bg-red-200">
+                Reject
+              </StatusButton>
+            )}
+            <StatusButton onClick={() => handleUnassign(complaint._id)} isLoading={isLoading} className="bg-gray-100 text-gray-700 hover:bg-gray-200">
+              <FiUserMinus size={14} className="inline mr-1" /> Unassign
+            </StatusButton>
+          </div>
+        </div>
+      )}
     </div>
   </div>
 );

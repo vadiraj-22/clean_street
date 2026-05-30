@@ -34,6 +34,10 @@ const complaintSchema = new mongoose.Schema(
       type: String, // URL to the uploaded image
       default: "",
     },
+    resolvedPhoto: {
+      type: String, // URL to the volunteer's resolution proof image
+      default: "",
+    },
     // Storing location in GeoJSON format is standard practice
     location_coords: {
       type: {

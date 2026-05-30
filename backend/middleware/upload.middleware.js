@@ -61,3 +61,18 @@ const commentImageStorage = new CloudinaryStorage({
 });
 
 export const uploadCommentImage = multer({ storage:commentImageStorage  });
+
+// Storage definition for resolved complaint proof photos
+const resolvedPhotoStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "cleanstreet/resolved",
+      allowed_formats: ["jpg", "jpeg", "png", "webp"],
+      public_id: `resolved_${req.user?.id || "anonymous"}_${Date.now()}`,
+      transformation: [{ width: 1024, height: 1024, crop: "limit" }],
+    };
+  },
+});
+
+export const uploadResolvedPhoto = multer({ storage: resolvedPhotoStorage });

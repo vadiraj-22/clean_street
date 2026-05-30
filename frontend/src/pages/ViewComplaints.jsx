@@ -341,9 +341,24 @@ const ComplaintCard = ({ complaint, onClick, onUpvote, onDownvote, user }) => {
             </div>
         </div>
         
-        {complaint.photo && (
+        {complaint.resolvedPhoto ? (
+          <div className="mb-4">
+            <div className="grid grid-cols-2 rounded-lg overflow-hidden border border-gray-200 h-48">
+              <div className="relative bg-gray-100">
+                <span className="absolute top-1 left-1 z-10 text-xs font-bold bg-black/50 text-white px-1.5 py-0.5 rounded">Before</span>
+                {complaint.photo
+                  ? <img src={complaint.photo} alt="Before" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No photo</div>}
+              </div>
+              <div className="relative bg-gray-100">
+                <span className="absolute top-1 left-1 z-10 text-xs font-bold bg-green-600/80 text-white px-1.5 py-0.5 rounded">After</span>
+                <img src={complaint.resolvedPhoto} alt="After" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          </div>
+        ) : complaint.photo ? (
           <img src={complaint.photo} alt={complaint.title} className="w-full h-48 object-cover rounded-lg mb-4" />
-        )}
+        ) : null}
         <h2 className="text-xl font-bold text-theme-primary mb-2">{complaint.title}</h2>
         <p className="text-theme-secondary mb-4 line-clamp-2">{complaint.description}</p>
         <div className="flex items-center text-sm text-theme-secondary mb-4">

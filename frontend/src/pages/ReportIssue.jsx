@@ -1,15 +1,16 @@
 // src/pages/ReportIssue.jsx
 
 import React, { useState, useEffect } from "react";
-import Navbar from "../Components/Navbar"; // Assuming updated Navbar
-import Footer from "../Components/Footer"; // Assuming updated Footer
+import Navbar from "../Components/Navbar";
+import Footer from "../Components/Footer";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import { useNavigate } from "react-router-dom";
 // === ICON UPDATE: Using consistent icons ===
-import { FiArrowLeft, FiUpload, FiXCircle, FiMapPin, FiInfo, FiImage, FiLoader, FiCheckCircle, FiAlertCircle } from "react-icons/fi"; // Replaced Fa with Fi
+import { FiArrowLeft, FiUpload, FiXCircle, FiMapPin, FiInfo, FiImage, FiLoader, FiCheckCircle, FiAlertCircle, FiNavigation } from "react-icons/fi"; // Replaced Fa with Fi
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useTheme } from "../context/ThemeContext";
+import useGeolocation, { reverseGeocode } from "../utils/useGeolocation";
 
 // Marker icon setup (Keep original)
 const markerIcon = new L.Icon({
@@ -21,11 +22,19 @@ const markerIcon = new L.Icon({
 });
 
 
-// LocationMarker Component (Keep original)
-const LocationMarker = ({ setPosition }) => {
+// LocationMarker Component — reverse-geocodes on click and updates address
+const LocationMarker = ({ setPosition, setAddress }) => {
   useMapEvents({
-    click(e) { //
-      setPosition(e.latlng); //
+    async click(e) {
+      setPosition(e.latlng);
+      try {
+        const geoData = await reverseGeocode(e.latlng.lat, e.latlng.lng);
+        if (geoData.fullAddress) {
+          setAddress(geoData.fullAddress);
+        }
+      } catch {
+        // silently ignore — user can type address manually
+      }
     },
   });
   return null;
@@ -47,6 +56,7 @@ const FormStatus = ({ message, type }) => {
 const ReportIssue = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const { detectLocation, locationLoading, locationError, setLocationError } = useGeolocation();
   const [position, setPosition] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null); // State for image preview URL
@@ -58,23 +68,26 @@ const ReportIssue = () => {
 const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
   // --- Core Logic (Keep original logic, add preview handling) ---
   useEffect(() => {
-    // Attempt to get user's current location
-    if (navigator.geolocation) { //
-      navigator.geolocation.getCurrentPosition( //
-        (pos) => setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }), //
-        (err) => {
-            console.error("Geolocation error:", err); //
-            setStatusMessage({ type: 'error', text: 'Could not get current location. Please select on map.' });
-            // Set a default view if location fails, e.g., center of Salem
-            setPosition({ lat: 11.6643, lng: 78.1460 });
-        }
-      );
-    } else {
-        setStatusMessage({ type: 'error', text: 'Geolocation is not supported. Please select on map.' });
-        // Set a default view
-        setPosition({ lat: 11.6643, lng: 78.1460 });
-    }
-  }, []);
+    // Auto-detect location on mount: fill address and set map position
+    detectLocation(({ lat, lng, fullAddress, city }) => {
+      setPosition({ lat, lng });
+      const addr = fullAddress || city || "";
+      if (addr) {
+        setForm((prev) => ({ ...prev, address: addr }));
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDetectLocation = () => {
+    setLocationError("");
+    detectLocation(({ lat, lng, fullAddress, city }) => {
+      setPosition({ lat, lng });
+      const addr = fullAddress || city || "";
+      if (addr) {
+        setForm((prev) => ({ ...prev, address: addr }));
+      }
+    });
+  };
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value }); //
 
@@ -190,7 +203,18 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
                                 <SelectField label="Issue Type" name="type" value={form.type} onChange={handleChange} required options={["Garbage", "Road Damage", "Street Light", "Water Leakage", "Drainage"]} />
                                 <SelectField label="Priority Level" name="priority" value={form.priority} onChange={handleChange} required options={["Low", "Medium", "High"]} />
                             </div>
-                            <InputField label="Full Address / Location Description" name="address" value={form.address} onChange={handleChange} placeholder="e.g., 123 Main St, near the bus stop" required />
+                            <InputField label="Full Address / Location Description" name="address" value={form.address} onChange={handleChange} placeholder="e.g., 123 Main St, near the bus stop" required detectButton={
+                              <button
+                                type="button"
+                                onClick={handleDetectLocation}
+                                disabled={locationLoading}
+                                title="Auto-fill from current location"
+                                className="flex items-center gap-1.5 px-3 py-2.5 rounded-md bg-indigo-100 text-indigo-700 font-semibold text-xs hover:bg-indigo-200 transition-all duration-200 disabled:opacity-50 whitespace-nowrap"
+                              >
+                                {locationLoading ? <FiLoader size={14} className="animate-spin" /> : <FiNavigation size={14} />}
+                                {locationLoading ? "Detecting..." : "Use My Location"}
+                              </button>
+                            } detectError={locationError} />
                             <InputField label="Nearby Landmark (Optional)" name="landmark" value={form.landmark} onChange={handleChange} placeholder="e.g., Opposite the corner shop" />
                             <TextareaField label="Detailed Description" name="description" value={form.description} onChange={handleChange} placeholder="Provide details like time observed, specific damage, etc." required />
                         </div>
@@ -235,11 +259,14 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
                       <MapContainer center={[position.lat, position.lng]} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
                         <Marker position={position} icon={markerIcon}></Marker>
-                        <LocationMarker setPosition={setPosition} />
+                        <LocationMarker setPosition={setPosition} setAddress={(addr) => setForm((prev) => ({ ...prev, address: addr }))} />
                       </MapContainer>
                     ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-gray-100 text-gray-500">
-                        <FiLoader className="animate-spin text-2xl mr-2"/> Loading Map...
+                      <div className="h-full w-full flex flex-col items-center justify-center bg-gray-100 text-gray-500 gap-2">
+                        <FiLoader className="animate-spin text-2xl text-indigo-500"/>
+                        <span className="text-sm font-medium">
+                          {locationLoading ? "Detecting your location..." : "Loading Map..."}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -276,16 +303,24 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
 
 // --- Reusable Form Field Components ---
 // === STYLE UPDATE: Consistent input styling ===
-const InputField = ({ label, name, required, ...props }) => (
+const InputField = ({ label, name, required, detectButton, detectError, ...props }) => (
   <div>
     <label htmlFor={name} className="block text-sm font-medium text-theme-primary mb-1.5">
         {label} {required && <span className="text-red-500">*</span>}
     </label>
-    <input
-        id={name} name={name} required={required}
-        {...props}
-        className="input-theme w-full rounded-md p-2.5 text-sm shadow-sm transition duration-200"
-    />
+    <div className={detectButton ? "flex items-center gap-2" : undefined}>
+      <input
+          id={name} name={name} required={required}
+          {...props}
+          className="input-theme w-full rounded-md p-2.5 text-sm shadow-sm transition duration-200"
+      />
+      {detectButton}
+    </div>
+    {detectError && (
+      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+        <FiAlertCircle size={12} />{detectError}
+      </p>
+    )}
   </div>
 );
 

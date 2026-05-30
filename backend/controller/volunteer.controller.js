@@ -285,10 +285,56 @@ export const updateComplaintStatus = async (req, res) => {
 };
 
 /**
- * @desc    Unassign complaint from volunteer
- * @route   POST /api/volunteer/unassign/:complaintId
+ * @desc    Resolve complaint with proof photo (mandatory)
+ * @route   PATCH /api/volunteer/resolve/:complaintId
  * @access  Private (Volunteer only)
  */
+export const resolveComplaint = async (req, res) => {
+  try {
+    const volunteerId = req.user.id;
+    const { complaintId } = req.params;
+
+    if (req.user.role !== "volunteer") {
+      return res.status(403).json({ message: "Access denied. Volunteers only." });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+      return res.status(400).json({ message: "Invalid complaint ID." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "A resolution proof photo is required to mark this complaint as resolved." });
+    }
+
+    const complaint = await Complaint.findById(complaintId);
+
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found." });
+    }
+
+    if (!complaint.assigned_to || complaint.assigned_to.toString() !== volunteerId.toString()) {
+      return res.status(403).json({ message: "You can only resolve complaints assigned to you." });
+    }
+
+    complaint.status = "resolved";
+    complaint.resolvedPhoto = req.file.path;
+    await complaint.save();
+
+    const updatedComplaint = await Complaint.findById(complaintId)
+      .populate('user_id', 'name email')
+      .populate('assigned_to', 'name email');
+
+    res.status(200).json({
+      success: true,
+      message: "Complaint resolved successfully with proof photo!",
+      data: updatedComplaint
+    });
+
+  } catch (error) {
+    console.error("Error resolving complaint:", error);
+    res.status(500).json({ message: "Server error. Could not resolve complaint." });
+  }
+};
 export const unassignComplaint = async (req, res) => {
   try {
     const volunteerId = req.user.id;

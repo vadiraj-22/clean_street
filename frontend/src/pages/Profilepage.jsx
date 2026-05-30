@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
-import { FiUser, FiMail, FiMapPin, FiLock, FiCamera, FiEdit3, FiSave, FiShield, FiX, FiEye, FiEyeOff, FiLoader, FiCheckCircle, FiAlertCircle, FiUserCheck } from "react-icons/fi";
+import { FiUser, FiMail, FiMapPin, FiLock, FiCamera, FiEdit3, FiSave, FiShield, FiEye, FiEyeOff, FiLoader, FiCheckCircle, FiAlertCircle, FiUserCheck, FiNavigation } from "react-icons/fi";
 import { useTheme } from "../context/ThemeContext";
+import useGeolocation from "../utils/useGeolocation";
 
 const FormMessage = ({ type, message }) => {
     if (!message) return null;
@@ -21,6 +22,7 @@ const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
 export default function Profilepage() {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const { detectLocation, locationLoading, locationError, setLocationError } = useGeolocation();
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", location: "" });
@@ -48,6 +50,16 @@ export default function Profilepage() {
   const togglePasswordVisibility = (field) => setPasswordVisibility(prev => ({ ...prev, [field]: !prev[field] }));
   const getInitials = (name) => (name ? name.trim().charAt(0).toUpperCase() : "U");
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleDetectLocation = () => {
+    if (!isEditing) return;
+    setLocationError("");
+    detectLocation(({ city }) => {
+      if (city) {
+        setForm((prev) => ({ ...prev, location: city }));
+      }
+    });
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -95,6 +107,7 @@ export default function Profilepage() {
     setSaveStatus({ saving: true, error: "", success: "" });
     try {
       const token = localStorage.getItem('token');
+      const { email: _email, ...profileData } = form;
       const res = await fetch(`${backend_Url}/api/user/profile`, { 
         method: "PUT", 
         headers: { 
@@ -102,7 +115,7 @@ export default function Profilepage() {
           ...(token && { 'Authorization': `Bearer ${token}` })
         }, 
         credentials: "include", 
-        body: JSON.stringify(form) 
+        body: JSON.stringify(profileData) 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update profile");
@@ -245,8 +258,46 @@ export default function Profilepage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                         <InputField label="Full Name" icon={<FiUser />} name="name" value={form.name} onChange={handleChange} isEditing={isEditing} />
-                        <InputField label="Email Address" icon={<FiMail />} name="email" value={form.email} onChange={handleChange} isEditing={isEditing} type="email" />
-                        <InputField label="Location" icon={<FiMapPin />} name="location" value={form.location} onChange={handleChange} isEditing={isEditing} placeholder="e.g., Salem, Tamil Nadu"/>
+                        <InputField label="Email Address" icon={<FiMail />} name="email" value={form.email} isEditing={false} readOnly type="email" />
+                        <div>
+                          <label htmlFor="location" className="block text-xs font-semibold text-gray-500 mb-1 tracking-wide uppercase">Location</label>
+                          <div className="flex items-center gap-2">
+                            <div className="relative group flex-1">
+                              <span className={`absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400 pointer-events-none transition-colors duration-200 ${isEditing ? 'group-focus-within:text-indigo-600' : ''}`}>
+                                <FiMapPin size={18} />
+                              </span>
+                              <input
+                                type="text"
+                                id="location"
+                                name="location"
+                                value={form.location || ""}
+                                onChange={isEditing ? handleChange : undefined}
+                                readOnly={!isEditing}
+                                placeholder="e.g., Salem, Tamil Nadu"
+                                className={`w-full pl-10 pr-3 py-2.5 border rounded-md transition duration-200 ease-in-out text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent ${
+                                  isEditing
+                                    ? "bg-white border-gray-300 text-gray-800 placeholder-gray-400"
+                                    : "bg-gray-100 border-gray-200 cursor-not-allowed text-gray-500"
+                                }`}
+                              />
+                            </div>
+                            {isEditing && (
+                              <button
+                                type="button"
+                                onClick={handleDetectLocation}
+                                disabled={locationLoading}
+                                title="Detect my current city"
+                                className="flex items-center gap-1.5 px-3 py-2.5 rounded-md bg-indigo-100 text-indigo-700 font-semibold text-xs hover:bg-indigo-200 transition-all duration-200 disabled:opacity-50 whitespace-nowrap"
+                              >
+                                {locationLoading ? <FiLoader size={14} className="animate-spin" /> : <FiNavigation size={14} />}
+                                {locationLoading ? "Detecting..." : "Detect"}
+                              </button>
+                            )}
+                          </div>
+                          {locationError && (
+                            <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><FiAlertCircle size={12}/>{locationError}</p>
+                          )}
+                        </div>
                         <InputField label="Role" icon={<FiUserCheck />} name="role" value={user.role || 'user'} isEditing={false} readOnly />
                       </div>
                   </div>
@@ -279,7 +330,6 @@ export default function Profilepage() {
 
 const TabButton = ({ id, activeTab, setActiveTab, icon, children }) => {
     const isActive = activeTab === id;
-    const label = children; // Store original children for logic if needed
     return (
         <button
             onClick={() => setActiveTab(id)}

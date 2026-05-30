@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 // === ADDED Link for the login prompt ===
 import { Link } from "react-router-dom"; 
-import { FiX, FiMapPin, FiTag, FiAlertTriangle, FiCalendar, FiSend, FiThumbsUp, FiThumbsDown, FiMessageSquare, FiTrash2, FiImage, FiLoader } from "react-icons/fi";
+import { FiX, FiMapPin, FiTag, FiAlertTriangle, FiCalendar, FiSend, FiThumbsUp, FiThumbsDown, FiMessageSquare, FiTrash2, FiImage, FiLoader, FiCheckCircle } from "react-icons/fi";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -230,11 +230,30 @@ const ComplaintModal = ({ complaint, onClose, onCommentAdded }) => {
 
                          {/* Left Column */}
                         <div className="space-y-6">
-                            {complaint.photo && (
+                            {/* Before / After images */}
+                            {complaint.resolvedPhoto ? (
+                              <div className="rounded-lg overflow-hidden shadow-md border border-gray-200">
+                                <div className="grid grid-cols-2">
+                                  <div className="relative">
+                                    <span className="absolute top-2 left-2 z-10 text-xs font-bold bg-black/60 text-white px-2 py-0.5 rounded">Before</span>
+                                    {complaint.photo
+                                      ? <img src={complaint.photo} alt="Before" className="w-full h-48 object-cover bg-gray-100" />
+                                      : <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No photo</div>}
+                                  </div>
+                                  <div className="relative">
+                                    <span className="absolute top-2 left-2 z-10 text-xs font-bold bg-green-600/80 text-white px-2 py-0.5 rounded">After</span>
+                                    <img src={complaint.resolvedPhoto} alt="After — resolved" className="w-full h-48 object-cover bg-gray-100" />
+                                  </div>
+                                </div>
+                                <div className="bg-green-50 border-t border-green-200 px-4 py-2 flex items-center gap-2 text-green-700 text-xs font-semibold">
+                                  <FiCheckCircle size={14} /> Issue resolved by volunteer
+                                </div>
+                              </div>
+                            ) : complaint.photo ? (
                                 <div className="rounded-lg overflow-hidden shadow-md border border-gray-200">
                                     <img src={complaint.photo} alt={complaint.title} className="w-full h-auto max-h-[400px] object-contain bg-gray-100" />
                                 </div>
-                            )}
+                            ) : null}
                             <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
                                 <h3 className="text-lg font-semibold text-gray-700 mb-3">Details</h3>
                                 <div className="space-y-3">

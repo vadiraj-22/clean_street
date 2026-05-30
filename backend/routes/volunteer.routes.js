@@ -4,9 +4,11 @@ import {
   getMyAssignments, 
   assignComplaintToSelf,
   updateComplaintStatus,
-  unassignComplaint
+  unassignComplaint,
+  resolveComplaint
 } from "../controller/volunteer.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
+import { uploadResolvedPhoto } from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
@@ -47,5 +49,19 @@ router.patch("/update-status/:complaintId", updateComplaintStatus);
  * @access  Private (Volunteer only)
  */
 router.post("/unassign/:complaintId", unassignComplaint);
+
+/**
+ * @route   PATCH /api/volunteer/resolve/:complaintId
+ * @desc    Resolve a complaint with mandatory proof photo upload
+ * @access  Private (Volunteer only)
+ */
+router.patch("/resolve/:complaintId", (req, res, next) => {
+  uploadResolvedPhoto.single("resolvedPhoto")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message || "File upload failed." });
+    }
+    next();
+  });
+}, resolveComplaint);
 
 export default router;

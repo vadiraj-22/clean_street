@@ -9,7 +9,6 @@ import VolunteerDashboard from "./pages/VolunteerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ReportIssue from "./pages/ReportIssue";
 import ViewComplaints from "./pages/ViewComplaints";
-import Navbar from "./Components/Navbar";
 import AboutPage from "./pages/AboutPage";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import ServicesPage from "./pages/ServicesPage";

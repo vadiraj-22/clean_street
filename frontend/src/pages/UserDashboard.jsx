@@ -324,37 +324,66 @@ const StatCard = ({ icon, value, label }) => (
 
 const ReportCard = ({ complaint, formatDate, getStatusBadge, handleDelete }) => (
   <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg transform hover:-translate-y-1 group flex flex-col">
-    <div className="relative h-40 bg-gray-100 overflow-hidden">
-      {complaint.photo ? (
-        <img src={complaint.photo} alt={complaint.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-400">
-          <FaMapMarkerAlt size={40} />
+    {/* Image section: before/after if resolved, else just the original photo */}
+    {complaint.status === "resolved" && complaint.resolvedPhoto ? (
+      <div className="relative">
+        <div className="grid grid-cols-2 h-40">
+          <div className="relative overflow-hidden bg-gray-100">
+            <span className="absolute top-1 left-1 z-10 text-xs font-bold bg-black/50 text-white px-1.5 py-0.5 rounded">Before</span>
+            {complaint.photo
+              ? <img src={complaint.photo} alt="Before" className="w-full h-full object-cover" />
+              : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No photo</div>}
+          </div>
+          <div className="relative overflow-hidden bg-gray-100">
+            <span className="absolute top-1 left-1 z-10 text-xs font-bold bg-green-600/80 text-white px-1.5 py-0.5 rounded">After</span>
+            <img src={complaint.resolvedPhoto} alt="Resolved" className="w-full h-full object-cover" />
+          </div>
         </div>
-      )}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleDelete(complaint._id);
-        }}
-        className="absolute top-2 right-2 p-1.5 bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black/50"
-        title="Delete Report"
-      >
-        <FaTrashAlt size={14} />
-      </button>
-    </div>
+        {/* Resolved banner */}
+        <div className="absolute bottom-0 left-0 right-0 bg-green-600/90 text-white text-xs font-bold text-center py-1 flex items-center justify-center gap-1">
+          <FaCheckCircle size={11} /> Issue Resolved
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleDelete(complaint._id); }}
+          className="absolute top-2 right-2 p-1.5 bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 focus:outline-none"
+          title="Delete Report"
+        >
+          <FaTrashAlt size={14} />
+        </button>
+      </div>
+    ) : (
+      <div className="relative h-40 bg-gray-100 overflow-hidden">
+        {complaint.photo ? (
+          <img src={complaint.photo} alt={complaint.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <FaMapMarkerAlt size={40} />
+          </div>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleDelete(complaint._id); }}
+          className="absolute top-2 right-2 p-1.5 bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black/50"
+          title="Delete Report"
+        >
+          <FaTrashAlt size={14} />
+        </button>
+      </div>
+    )}
+
     <div className="p-4 flex flex-col flex-grow">
       <div className="flex justify-between items-center mb-2">{getStatusBadge(complaint.status)}</div>
       <h3 className="font-semibold text-base text-gray-800 mb-2 line-clamp-2 flex-grow group-hover:text-indigo-700 transition-colors">
         {complaint.title}
       </h3>
+      {/* Resolved notice for user */}
+      {complaint.status === "resolved" && complaint.resolvedPhoto && (
+        <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 mb-2 flex items-center gap-1">
+          <FaCheckCircle size={11} /> Your issue has been solved by a volunteer.
+        </p>
+      )}
       <div className="space-y-1 text-xs text-gray-500 mt-auto pt-2 border-t border-gray-100">
-        <p className="line-clamp-1">
-          <span className="font-medium text-gray-600">Type:</span> {complaint.type}
-        </p>
-        <p className="line-clamp-1">
-          <span className="font-medium text-gray-600">Reported:</span> {formatDate(complaint.createdAt)}
-        </p>
+        <p className="line-clamp-1"><span className="font-medium text-gray-600">Type:</span> {complaint.type}</p>
+        <p className="line-clamp-1"><span className="font-medium text-gray-600">Reported:</span> {formatDate(complaint.createdAt)}</p>
         <div className="flex items-start pt-1">
           <FaMapMarkerAlt className="mr-1.5 mt-0.5 flex-shrink-0 text-gray-400" size={12} />
           <span className="line-clamp-2 leading-snug">{complaint.address}</span>
