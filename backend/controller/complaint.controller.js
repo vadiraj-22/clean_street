@@ -440,3 +440,175 @@ export const downvoteComplaint = async (req, res) => {
     res.status(500).json({ message: "Server error. Could not downvote complaint.", error: error.message });
   }
 };
+
+/**
+ * @desc   Get recent updates for the user (status changes, assignments, resolutions)
+ * @route   GET /api/complaints/recent-updates
+ * @access   Private
+ */
+export const getRecentUpdates = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    const limit = parseInt(req.query.limit) || 10;
+
+    let updates = [];
+
+    if (userRole === 'user') {
+      // For regular users: Show updates on THEIR complaints
+      const userComplaints = await Complaint.find({ user_id: userId })
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .populate('assigned_to', 'name')
+        .populate('user_id', 'name');
+
+      updates = userComplaints
+        .filter(complaint => {
+          // Only show complaints that have been updated (not just created)
+          return complaint.updatedAt.getTime() !== complaint.createdAt.getTime() ||
+                 complaint.status !== 'received' ||
+                 complaint.assigned_to;
+        })
+        .map(complaint => {
+          let message = '';
+          let type = 'info';
+          
+          if (complaint.status === 'resolved') {
+            message = `Your complaint "${complaint.title}" has been resolved`;
+            type = 'success';
+          } else if (complaint.status === 'in_review') {
+            message = `Your complaint "${complaint.title}" is now being reviewed`;
+            type = 'progress';
+          } else if (complaint.status === 'rejected') {
+            message = `Your complaint "${complaint.title}" was rejected`;
+            type = 'error';
+          } else if (complaint.assigned_to) {
+            message = `Your complaint "${complaint.title}" was assigned to ${complaint.assigned_to.name}`;
+            type = 'assigned';
+          } else {
+            message = `Your complaint "${complaint.title}" was updated`;
+            type = 'info';
+          }
+
+          return {
+            _id: complaint._id,
+            message,
+            type,
+            complaintTitle: complaint.title,
+            complaintType: complaint.type,
+            status: complaint.status,
+            timestamp: complaint.updatedAt,
+            assignedTo: complaint.assigned_to?.name || null
+          };
+        });
+
+    } else if (userRole === 'volunteer') {
+      // For volunteers: Show updates on complaints in their area and their assignments
+      const volunteer = await mongoose.model('User').findById(userId);
+      
+      if (volunteer && volunteer.location_coords) {
+        // Get nearby complaints that were recently updated
+        const nearbyComplaints = await Complaint.find({
+          location_coords: {
+            $near: {
+              $geometry: volunteer.location_coords,
+              $maxDistance: 50000 // 50km
+            }
+          },
+          $or: [
+            { assigned_to: userId }, // Their assignments
+            { assigned_to: null, status: 'received' } // Unassigned nearby
+          ]
+        })
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .populate('assigned_to', 'name')
+        .populate('user_id', 'name location');
+
+        updates = nearbyComplaints.map(complaint => {
+          let message = '';
+          let type = 'info';
+          
+          if (complaint.assigned_to && complaint.assigned_to._id.toString() === userId.toString()) {
+            if (complaint.status === 'resolved') {
+              message = `You resolved "${complaint.title}"`;
+              type = 'success';
+            } else if (complaint.status === 'in_review') {
+              message = `You're working on "${complaint.title}"`;
+              type = 'progress';
+            } else {
+              message = `You were assigned "${complaint.title}"`;
+              type = 'assigned';
+            }
+          } else {
+            message = `New complaint in ${complaint.user_id?.location || 'your area'}: "${complaint.title}"`;
+            type = 'new';
+          }
+
+          return {
+            _id: complaint._id,
+            message,
+            type,
+            complaintTitle: complaint.title,
+            complaintType: complaint.type,
+            status: complaint.status,
+            timestamp: complaint.updatedAt,
+            location: complaint.user_id?.location || complaint.address
+          };
+        });
+      }
+
+    } else if (userRole === 'admin') {
+      // For admins: Show all recent complaint activities
+      const recentComplaints = await Complaint.find({})
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .populate('assigned_to', 'name')
+        .populate('user_id', 'name location');
+
+      updates = recentComplaints.map(complaint => {
+        let message = '';
+        let type = 'info';
+        
+        if (complaint.status === 'resolved') {
+          message = `Complaint "${complaint.title}" was resolved`;
+          type = 'success';
+        } else if (complaint.status === 'in_review') {
+          message = `Complaint "${complaint.title}" is in review`;
+          type = 'progress';
+        } else if (complaint.assigned_to) {
+          message = `Complaint "${complaint.title}" assigned to ${complaint.assigned_to.name}`;
+          type = 'assigned';
+        } else {
+          message = `New complaint: "${complaint.title}" in ${complaint.user_id?.location || 'unknown location'}`;
+          type = 'new';
+        }
+
+        return {
+          _id: complaint._id,
+          message,
+          type,
+          complaintTitle: complaint.title,
+          complaintType: complaint.type,
+          status: complaint.status,
+          timestamp: complaint.updatedAt,
+          reportedBy: complaint.user_id?.name || 'Unknown',
+          location: complaint.user_id?.location || complaint.address
+        };
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updates
+    });
+
+  } catch (error) {
+    console.error("Error fetching recent updates:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error. Could not fetch recent updates.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};

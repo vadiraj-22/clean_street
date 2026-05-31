@@ -72,21 +72,21 @@ const UserDashboard = () => {
           }
         }
 
-        // === Fetch recent admin logs ===
+        // === Fetch recent updates ===
         try {
           const token = localStorage.getItem('token');
-          const logsRes = await fetch(`${backend_Url}/api/admin/logs`, { 
+          const updatesRes = await fetch(`${backend_Url}/api/complaints/recent-updates?limit=5`, { 
             credentials: "include",
             headers: {
               ...(token && { 'Authorization': `Bearer ${token}` })
             }
           });
-          const logsData = await logsRes.json();
-          if (logsRes.ok && logsData.success) {
-            setActivities(logsData.data.slice(0, 5));
+          const updatesData = await updatesRes.json();
+          if (updatesRes.ok && updatesData.success) {
+            setActivities(updatesData.data);
           }
         } catch (error) {
-          console.error("Error fetching admin logs:", error);
+          console.error("Error fetching recent updates:", error);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -229,20 +229,74 @@ const UserDashboard = () => {
               </div>
               {activities.length === 0 ? (
                 <div className="bg-white rounded-xl shadow border border-gray-100 p-6 text-center">
-                  <p className="text-gray-500 text-sm">No recent updates from admin yet.</p>
+                  <p className="text-gray-500 text-sm">No recent updates on your complaints yet.</p>
                 </div>
               ) : (
-                <ul className="bg-white rounded-xl shadow">
-                  {activities.map((log) => (
-                    <li key={log._id} className="p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <p className="text-gray-800 text-sm">
-                          {log.action}
-                        </p>
-                        <span className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</span>
-                      </div>
-                    </li>
-                  ))}
+                <ul className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
+                  {activities.map((update) => {
+                    // Determine icon and color based on update type
+                    let icon, colorClass, bgClass;
+                    switch(update.type) {
+                      case 'success':
+                        icon = <FaCheckCircle size={16} />;
+                        colorClass = 'text-green-600';
+                        bgClass = 'bg-green-50';
+                        break;
+                      case 'progress':
+                        icon = <FaSyncAlt size={16} />;
+                        colorClass = 'text-blue-600';
+                        bgClass = 'bg-blue-50';
+                        break;
+                      case 'assigned':
+                        icon = <FaUserShield size={16} />;
+                        colorClass = 'text-purple-600';
+                        bgClass = 'bg-purple-50';
+                        break;
+                      case 'error':
+                        icon = <FaExclamationTriangle size={16} />;
+                        colorClass = 'text-red-600';
+                        bgClass = 'bg-red-50';
+                        break;
+                      default:
+                        icon = <FiActivity size={16} />;
+                        colorClass = 'text-gray-600';
+                        bgClass = 'bg-gray-50';
+                    }
+                    
+                    return (
+                      <li key={update._id} className="p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-full ${bgClass} ${colorClass} flex-shrink-0 mt-0.5`}>
+                            {icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-800 text-sm font-medium mb-1">
+                              {update.message}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                              <span className="inline-flex items-center gap-1">
+                                <FaMapMarkerAlt size={10} />
+                                {update.complaintType}
+                              </span>
+                              {update.assignedTo && (
+                                <span className="inline-flex items-center gap-1">
+                                  • Assigned to: {update.assignedTo}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                            {new Date(update.timestamp).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>

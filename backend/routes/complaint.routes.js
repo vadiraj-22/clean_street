@@ -2,7 +2,7 @@
 
 import express from "express";
  // 1. Import multer
-import { createComplaint, updateComplaint, getUserComplaints, getAllUserComplaints, deleteComplaint, getCommunityComplaints, upvoteComplaint, downvoteComplaint} from "../controller/complaint.controller.js";
+import { createComplaint, updateComplaint, getUserComplaints, getAllUserComplaints, deleteComplaint, getCommunityComplaints, upvoteComplaint, downvoteComplaint, getRecentUpdates} from "../controller/complaint.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 
 import { uploadComplaintPhoto } from "../middleware/upload.middleware.js";
@@ -66,5 +66,12 @@ router.post("/:id/upvote", protect, upvoteComplaint);
  * @access  Private
  */
 router.post("/:id/downvote", protect, downvoteComplaint);
+
+/**
+ * @route   GET /api/complaints/recent-updates
+ * @desc    Get recent updates for the user (status changes, assignments, resolutions)
+ * @access  Private
+ */
+router.get("/recent-updates", protect, getRecentUpdates);
 
 export default router;

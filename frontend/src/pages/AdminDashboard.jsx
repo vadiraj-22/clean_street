@@ -48,11 +48,11 @@ const AdminDashboard = () => {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
       
-      const [statsRes, usersRes, complaintsRes, logsRes] = await Promise.all([
+      const [statsRes, usersRes, complaintsRes, updatesRes] = await Promise.all([
         fetch(`${backend_Url}/api/admin/stats`, { credentials: "include", headers }),
         fetch(`${backend_Url}/api/admin/users`, { credentials: "include", headers }),
         fetch(`${backend_Url}/api/admin/complaints`, { credentials: "include", headers }),
-        fetch(`${backend_Url}/api/admin/logs`, { credentials: "include", headers }),
+        fetch(`${backend_Url}/api/complaints/recent-updates?limit=10`, { credentials: "include", headers }),
       ]);
 
       if (!statsRes.ok || !usersRes.ok || !complaintsRes.ok) {
@@ -63,12 +63,12 @@ const AdminDashboard = () => {
       const statsData = await statsRes.json();
       const usersData = await usersRes.json();
       const complaintsData = await complaintsRes.json();
-      const logsData = await logsRes.json();
+      const updatesData = await updatesRes.json();
 
       if (statsData.success) setStats(statsData.data);
       if (usersData.success) setUsers(usersData.data);
       if (complaintsData.success) setComplaints(complaintsData.data);
-      if (logsData.success) setActivities(logsData.data);
+      if (updatesData.success) setActivities(updatesData.data);
     } catch (err) {
       console.error("Error fetching admin data:", err);
       setError(err.message || "Failed to load data. Please try again.");
@@ -1043,26 +1043,82 @@ const AdminDashboard = () => {
           {activeTab === 'recent activities' && ( 
             <div className="bg-white rounded-xl shadow p-4 sm:p-5 lg:p-6">
               <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Recent Activities</h2>
-              <ul className="space-y-2">
-                {activities.map((log) => (
-                  <li key={log._id} className="rounded-lg hover:bg-gray-100 px-3 sm:px-4 py-3 transition-colors">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                      <span className="font-medium text-gray-800 text-sm sm:text-base">{log.user_id?.name || "Unknown Admin"}</span>
-                      <span className="hidden sm:inline text-gray-500">-</span>
-                      <span className="text-gray-700 text-xs sm:text-sm">{log.action}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {activities.length === 0 && (
+              {activities.length === 0 ? (
                 <p className="text-center text-gray-500 py-6 text-sm sm:text-base">No recent activities.</p>
+              ) : (
+                <ul className="space-y-2 divide-y divide-gray-100">
+                  {activities.map((update) => {
+                    // Determine icon and color based on update type
+                    let icon, colorClass, bgClass;
+                    switch(update.type) {
+                      case 'success':
+                        icon = <FiCheckCircle size={16} />;
+                        colorClass = 'text-green-600';
+                        bgClass = 'bg-green-50';
+                        break;
+                      case 'progress':
+                        icon = <FiClock size={16} />;
+                        colorClass = 'text-blue-600';
+                        bgClass = 'bg-blue-50';
+                        break;
+                      case 'assigned':
+                        icon = <FiUserCheck size={16} />;
+                        colorClass = 'text-purple-600';
+                        bgClass = 'bg-purple-50';
+                        break;
+                      case 'new':
+                        icon = <FiAlertCircle size={16} />;
+                        colorClass = 'text-orange-600';
+                        bgClass = 'bg-orange-50';
+                        break;
+                      default:
+                        icon = <FiActivity size={16} />;
+                        colorClass = 'text-gray-600';
+                        bgClass = 'bg-gray-50';
+                    }
+                    
+                    return (
+                      <li key={update._id} className="pt-3 first:pt-0 hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-full ${bgClass} ${colorClass} flex-shrink-0 mt-0.5`}>
+                            {icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-800 text-sm font-medium mb-1">
+                              {update.message}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                              <span className="inline-flex items-center gap-1">
+                                <FiClipboard size={10} />
+                                {update.complaintType}
+                              </span>
+                              {update.reportedBy && (
+                                <span className="inline-flex items-center gap-1">
+                                  • Reported by: {update.reportedBy}
+                                </span>
+                              )}
+                              {update.location && (
+                                <span className="inline-flex items-center gap-1">
+                                  • {update.location}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                            {new Date(update.timestamp).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
-
-          
           )}
         </div>
 
