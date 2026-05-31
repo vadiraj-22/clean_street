@@ -25,6 +25,34 @@ router.get("/test-auth", protect, (req, res) => {
   res.json({ message: "Auth working!", user: req.user });
 });
 
+/**
+ * @route   GET /api/complaints/recent-updates
+ * @desc    Get recent updates for the user (status changes, assignments, resolutions)
+ * @access  Private
+ * IMPORTANT: This must come BEFORE /:id routes to avoid conflicts
+ */
+router.get("/recent-updates", protect, getRecentUpdates);
+
+/**
+ * @route   GET /api/complaints/my-reports
+ * @desc    Get user's own complaints
+ * @access  Private
+ */
+router.get("/my-reports", protect, getUserComplaints);
+
+/**
+ * @route   GET /api/complaints/all
+ * @desc    Get all user complaints (paginated)
+ * @access  Private
+ */
+router.get("/all", protect, getAllUserComplaints);
+
+/**
+ * @route   GET /api/complaints/community
+ * @desc    Get all complaints for public view
+ * @access  Public
+ */
+router.get("/community", getCommunityComplaints);
 
 /**
  * @route   PATCH /api/complaints/:id
@@ -32,26 +60,13 @@ router.get("/test-auth", protect, (req, res) => {
  * @access  Private (requires authentication)
  */
 router.patch("/:id", protect, updateComplaint);
-router.get("/my-reports", protect, getUserComplaints);
-router.get("/all", protect, getAllUserComplaints);
 
-// 2. ADD THIS NEW ROUTE FOR DELETING A COMPLAINT
 /**
  * @route   DELETE /api/complaints/:id
  * @desc    Delete a user's own complaint
  * @access  Private
  */
 router.delete("/:id", protect, deleteComplaint);
-
-// ... (keep all your existing routes)
-
-/**
- * @route   GET /api/complaints/community
- * @desc    Get all complaints for public view
- * @access  Public
- */
-// ADD THIS NEW LINE AT THE END OF THE FILE
-router.get("/community", getCommunityComplaints);
 
 /**
  * @route   POST /api/complaints/:id/upvote
@@ -66,12 +81,5 @@ router.post("/:id/upvote", protect, upvoteComplaint);
  * @access  Private
  */
 router.post("/:id/downvote", protect, downvoteComplaint);
-
-/**
- * @route   GET /api/complaints/recent-updates
- * @desc    Get recent updates for the user (status changes, assignments, resolutions)
- * @access  Private
- */
-router.get("/recent-updates", protect, getRecentUpdates);
 
 export default router;

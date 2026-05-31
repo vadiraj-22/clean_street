@@ -462,14 +462,7 @@ export const getRecentUpdates = async (req, res) => {
         .populate('assigned_to', 'name')
         .populate('user_id', 'name');
 
-      updates = userComplaints
-        .filter(complaint => {
-          // Only show complaints that have been updated (not just created)
-          return complaint.updatedAt.getTime() !== complaint.createdAt.getTime() ||
-                 complaint.status !== 'received' ||
-                 complaint.assigned_to;
-        })
-        .map(complaint => {
+      updates = userComplaints.map(complaint => {
           let message = '';
           let type = 'info';
           
@@ -485,6 +478,9 @@ export const getRecentUpdates = async (req, res) => {
           } else if (complaint.assigned_to) {
             message = `Your complaint "${complaint.title}" was assigned to ${complaint.assigned_to.name}`;
             type = 'assigned';
+          } else if (complaint.status === 'received') {
+            message = `Your complaint "${complaint.title}" is pending review`;
+            type = 'info';
           } else {
             message = `Your complaint "${complaint.title}" was updated`;
             type = 'info';
@@ -503,60 +499,60 @@ export const getRecentUpdates = async (req, res) => {
         });
 
     } else if (userRole === 'volunteer') {
-      // For volunteers: Show updates on complaints in their area and their assignments
-      const volunteer = await mongoose.model('User').findById(userId);
-      
-      if (volunteer && volunteer.location_coords) {
-        // Get nearby complaints that were recently updated
-        const nearbyComplaints = await Complaint.find({
-          location_coords: {
-            $near: {
-              $geometry: volunteer.location_coords,
-              $maxDistance: 50000 // 50km
-            }
-          },
-          $or: [
-            { assigned_to: userId }, // Their assignments
-            { assigned_to: null, status: 'received' } // Unassigned nearby
-          ]
-        })
+      // For volunteers: Show their assignments and nearby complaints
+      // Get complaints assigned to this volunteer
+      const myAssignments = await Complaint.find({ assigned_to: userId })
         .sort({ updatedAt: -1 })
         .limit(limit)
         .populate('assigned_to', 'name')
         .populate('user_id', 'name location');
 
-        updates = nearbyComplaints.map(complaint => {
-          let message = '';
-          let type = 'info';
-          
-          if (complaint.assigned_to && complaint.assigned_to._id.toString() === userId.toString()) {
-            if (complaint.status === 'resolved') {
-              message = `You resolved "${complaint.title}"`;
-              type = 'success';
-            } else if (complaint.status === 'in_review') {
-              message = `You're working on "${complaint.title}"`;
-              type = 'progress';
-            } else {
-              message = `You were assigned "${complaint.title}"`;
-              type = 'assigned';
-            }
-          } else {
-            message = `New complaint in ${complaint.user_id?.location || 'your area'}: "${complaint.title}"`;
-            type = 'new';
-          }
+      // Get recent unassigned complaints (for discovery)
+      const recentUnassigned = await Complaint.find({ 
+        assigned_to: null, 
+        status: 'received' 
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('user_id', 'name location');
 
-          return {
-            _id: complaint._id,
-            message,
-            type,
-            complaintTitle: complaint.title,
-            complaintType: complaint.type,
-            status: complaint.status,
-            timestamp: complaint.updatedAt,
-            location: complaint.user_id?.location || complaint.address
-          };
-        });
-      }
+      // Combine and deduplicate
+      const allComplaints = [...myAssignments, ...recentUnassigned];
+      const uniqueComplaints = Array.from(
+        new Map(allComplaints.map(c => [c._id.toString(), c])).values()
+      ).slice(0, limit);
+
+      updates = uniqueComplaints.map(complaint => {
+        let message = '';
+        let type = 'info';
+        
+        if (complaint.assigned_to && complaint.assigned_to._id.toString() === userId.toString()) {
+          if (complaint.status === 'resolved') {
+            message = `You resolved "${complaint.title}"`;
+            type = 'success';
+          } else if (complaint.status === 'in_review') {
+            message = `You're working on "${complaint.title}"`;
+            type = 'progress';
+          } else {
+            message = `You were assigned "${complaint.title}"`;
+            type = 'assigned';
+          }
+        } else {
+          message = `New complaint in ${complaint.user_id?.location || 'your area'}: "${complaint.title}"`;
+          type = 'new';
+        }
+
+        return {
+          _id: complaint._id,
+          message,
+          type,
+          complaintTitle: complaint.title,
+          complaintType: complaint.type,
+          status: complaint.status,
+          timestamp: complaint.updatedAt || complaint.createdAt,
+          location: complaint.user_id?.location || complaint.address
+        };
+      });
 
     } else if (userRole === 'admin') {
       // For admins: Show all recent complaint activities

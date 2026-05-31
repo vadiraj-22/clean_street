@@ -20,6 +20,7 @@ import {
   FiUpload,
   FiX,
   FiCamera,
+  FiUserCheck,
 } from "react-icons/fi";
 import { Toaster, toast } from "react-hot-toast";
 
