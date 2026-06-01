@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
     },
     location: {
       type: String,
@@ -30,6 +30,19 @@ const userSchema = new mongoose.Schema(
     profilePhoto: {
       type: String,
       default: "",
+    },
+    googleId: {
+      type: String,
+      default: null,
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    isProfileComplete: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

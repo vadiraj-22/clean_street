@@ -15,7 +15,8 @@ const config = {
   JWT_USER_SECRET: process.env.JWT_USER_SECRET || process.env.JWT_SECRET || null,
   JWT_ADMIN_SECRET: process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET || null,
   ADMIN_PASSKEY: process.env.ADMIN_PASSKEY || null,
-  NODE_ENV : process.env.NODE_ENV || 'development'
+  NODE_ENV : process.env.NODE_ENV || 'development',
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || null
 };
 
 export default config;

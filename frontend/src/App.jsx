@@ -12,6 +12,7 @@ import ViewComplaints from "./pages/ViewComplaints";
 import AboutPage from "./pages/AboutPage";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import ServicesPage from "./pages/ServicesPage";
+import CompleteProfile from "./pages/CompleteProfile";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
          <Route path="/about" element={<AboutPage />} />
           <Route path="/how-it-works" element={<HowItWorksPage />} />
           <Route path="/services" element={<ServicesPage />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
       </Routes>
     </Router>
 

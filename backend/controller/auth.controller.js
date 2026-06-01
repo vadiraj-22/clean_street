@@ -1,9 +1,19 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import config from "../.config/config.js";
 
-const { JWT_USER_SECRET, JWT_ADMIN_SECRET, NODE_ENV, ADMIN_PASSKEY } = config;
+const { JWT_USER_SECRET, JWT_ADMIN_SECRET, NODE_ENV, ADMIN_PASSKEY, GOOGLE_CLIENT_ID } = config;
+
+// Lazy-initialize Google OAuth client (avoids crash when GOOGLE_CLIENT_ID is not yet set)
+let googleClient = null;
+const getGoogleClient = () => {
+  if (!googleClient && GOOGLE_CLIENT_ID) {
+    googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+  }
+  return googleClient;
+};
 
 // Optimize bcrypt rounds for better performance
 // 10 rounds provides excellent security while keeping login fast (~100-150ms for hash comparison)
@@ -67,6 +77,8 @@ export const register = async (req, res) => {
       password: hashedPassword,
       role: role || "user",
       location,
+      authProvider: "local",
+      isProfileComplete: true,
     });
 
     await newUser.save();
@@ -84,6 +96,7 @@ export const register = async (req, res) => {
         role: newUser.role,
         location: newUser.location,
         profilePhoto: newUser.profilePhoto,
+        isProfileComplete: newUser.isProfileComplete,
       },
     });
   } catch (err) {
@@ -104,10 +117,15 @@ export const login = async (req, res) => {
     // Find user with lean() for better performance
     // Select only fields needed for login to reduce data transfer
     const user = await User.findOne({ email })
-      .select('_id name email password role location profilePhoto')
+      .select('_id name email password role location profilePhoto authProvider isProfileComplete')
       .lean();
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    // If the user signed up via Google and has no password, tell them to use Google
+    if (user.authProvider === "google" && !user.password) {
+      return res.status(400).json({ message: "This account uses Google Sign-In. Please sign in with Google." });
     }
 
     // Compare password
@@ -131,10 +149,98 @@ export const login = async (req, res) => {
         role: user.role,
         location: user.location,
         profilePhoto: user.profilePhoto,
+        isProfileComplete: user.isProfileComplete,
       },
     });
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// Google Sign-In
+export const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: "Google credential is required" });
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+      console.error("GOOGLE_CLIENT_ID is not configured in environment variables");
+      return res.status(500).json({ message: "Server configuration error: Google Client ID not set" });
+    }
+
+    // Verify the Google ID token
+    const client = getGoogleClient();
+    if (!client) {
+      return res.status(500).json({ message: "Server configuration error: Google Client ID not set" });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: "Could not retrieve email from Google account" });
+    }
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+    let isNewUser = false;
+
+    if (user) {
+      // Existing user — update googleId if not already set
+      if (!user.googleId) {
+        user.googleId = googleId;
+        if (!user.profilePhoto && picture) {
+          user.profilePhoto = picture;
+        }
+        await user.save();
+      }
+    } else {
+      // New user — create with Google info, mark profile as incomplete
+      isNewUser = true;
+      user = new User({
+        name: name || "Google User",
+        email,
+        googleId,
+        authProvider: "google",
+        profilePhoto: picture || "",
+        role: "user",
+        location: "",
+        isProfileComplete: false,
+      });
+      await user.save();
+    }
+
+    const token = generateTokenAndSetCookie(res, user);
+
+    res.status(200).json({
+      message: isNewUser ? "Account created with Google" : "Login successful",
+      token,
+      isNewUser,
+      user: {
+        _id: user._id,
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        location: user.location,
+        profilePhoto: user.profilePhoto,
+        isProfileComplete: user.isProfileComplete,
+      },
+    });
+  } catch (err) {
+    console.error("Google login error:", err);
+    if (err.message?.includes("Token used too late") || err.message?.includes("Invalid token")) {
+      return res.status(401).json({ message: "Google sign-in expired. Please try again." });
+    }
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };

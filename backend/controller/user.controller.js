@@ -116,3 +116,46 @@ export const updatePassword = async (req, res) => {
   }
 };
 
+export const completeProfile = async (req, res) => {
+  try {
+    const { location, role } = req.body;
+
+    if (!location || !role) {
+      return res.status(400).json({ message: "Location and role are required" });
+    }
+
+    // Only allow user or volunteer roles via Google sign-in completion
+    if (!["user", "volunteer"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role. Choose 'user' or 'volunteer'." });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.location = location;
+    user.role = role;
+    user.isProfileComplete = true;
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile completed successfully",
+      user: {
+        _id: user._id,
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        location: user.location,
+        profilePhoto: user.profilePhoto,
+        isProfileComplete: user.isProfileComplete,
+      },
+    });
+  } catch (error) {
+    console.error("Complete profile error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
