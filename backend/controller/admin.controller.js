@@ -69,6 +69,11 @@ export const updateUserRoleAdmin = async (req, res) => {
     user.role = role;
     await user.save();
 
+    // Record admin log for role change
+    const adminName = req.user?.name || "unknown Admin";
+    const action = `Updated user ${user.name}'s role to '${role}'`;
+    await recordAdminLog(req.user?.id, action);
+
     res.status(200).json({ success: true, message: `User role updated to ${role}.` });
   } catch (error) {
     console.error("Error updating user role:", error);

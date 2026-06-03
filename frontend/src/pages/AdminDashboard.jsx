@@ -3,11 +3,13 @@ import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
 import AdminStatistics from "../Components/AdminStatistics";
 import { useNavigate } from "react-router-dom";
-import { FiUsers, FiClipboard, FiAlertCircle, FiCheckCircle, FiEdit, FiSave, FiX, FiLoader, FiActivity, FiUserCheck, FiClock, FiDownload, FiFilter } from "react-icons/fi";
+import { FiUsers, FiClipboard, FiAlertCircle, FiCheckCircle, FiEdit, FiSave, FiX, FiLoader, FiActivity, FiUserCheck, FiClock, FiDownload, FiFilter, FiMapPin, FiEye, FiChevronDown, FiChevronUp, FiShield } from "react-icons/fi";
 import { Toaster, toast } from "react-hot-toast";
+import { useTheme } from "../context/ThemeContext";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
   const [stats, setStats] = useState({ totalUsers: 0, totalComplaints: 0, pendingComplaints: 0, resolvedComplaints: 0 });
   const [users, setUsers] = useState([]);
   const [complaints, setComplaints] = useState([]);
@@ -26,6 +28,8 @@ const AdminDashboard = () => {
   const [roleFilter, setRoleFilter] = useState("");
   const [complaintLocationFilter, setComplaintLocationFilter] = useState("");
   const [assignedToFilter, setAssignedToFilter] = useState("");
+  const [expandedVolunteers, setExpandedVolunteers] = useState(new Set());
+  const [adminLogs, setAdminLogs] = useState([]);
 
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const backend_Url = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
@@ -48,14 +52,15 @@ const AdminDashboard = () => {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
       
-      const [statsRes, usersRes, complaintsRes, updatesRes] = await Promise.all([
+      const [statsRes, usersRes, complaintsRes, updatesRes, logsRes] = await Promise.all([
         fetch(`${backend_Url}/api/admin/stats`, { credentials: "include", headers }),
         fetch(`${backend_Url}/api/admin/users`, { credentials: "include", headers }),
         fetch(`${backend_Url}/api/admin/complaints`, { credentials: "include", headers }),
         fetch(`${backend_Url}/api/complaints/recent-updates?limit=10`, { credentials: "include", headers }),
+        fetch(`${backend_Url}/api/admin/logs`, { credentials: "include", headers }),
       ]);
 
-      if (!statsRes.ok || !usersRes.ok || !complaintsRes.ok) {
+      if (!statsRes.ok || !usersRes.ok || !complaintsRes.ok || !logsRes.ok) {
         const errorData = await (statsRes.ok ? usersRes.ok ? complaintsRes : usersRes : statsRes).json();
         throw new Error(errorData.message || 'Failed to fetch admin data. Ensure you are logged in as admin.');
       }
@@ -64,11 +69,13 @@ const AdminDashboard = () => {
       const usersData = await usersRes.json();
       const complaintsData = await complaintsRes.json();
       const updatesData = await updatesRes.json();
+      const logsData = await logsRes.json();
 
       if (statsData.success) setStats(statsData.data);
       if (usersData.success) setUsers(usersData.data);
       if (complaintsData.success) setComplaints(complaintsData.data);
       if (updatesData.success) setActivities(updatesData.data);
+      if (logsData.success) setAdminLogs(logsData.data);
     } catch (err) {
       console.error("Error fetching admin data:", err);
       setError(err.message || "Failed to load data. Please try again.");
@@ -174,6 +181,18 @@ const AdminDashboard = () => {
 
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  const toggleVolunteerExpand = (id) => {
+    setExpandedVolunteers(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   // Get unique locations from users (case-insensitive)
   const locationMap = new Map();
   users.forEach(user => {
@@ -228,6 +247,15 @@ const AdminDashboard = () => {
       (assignedToFilter === 'unassigned' ? !complaint.assigned_to : complaint.assigned_to?._id === assignedToFilter);
     return matchesLocation && matchesAssignment;
   });
+
+  // Volunteer handling calculations
+  const volunteers = users.filter(u => u.role === 'volunteer');
+  const totalVolunteers = volunteers.length;
+  const busyVolunteers = volunteers.filter(v => 
+    complaints.some(c => c.assigned_to?._id === v._id && c.status !== 'resolved' && c.status !== 'rejected')
+  ).length;
+  const idleVolunteers = totalVolunteers - busyVolunteers;
+  const totalResolvedTasks = complaints.filter(c => c.assigned_to && c.status === 'resolved').length;
 
   const downloadReport = async (format) => {
     try {
@@ -527,7 +555,7 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col transition-colors duration-300">
+      <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-[#121214] text-white' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 text-gray-800'}`}>
         <Toaster position="bottom-center" reverseOrder={false} />
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
@@ -536,7 +564,7 @@ const AdminDashboard = () => {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p className="mt-4 text-lg font-medium text-gray-600">Loading Admin Dashboard...</p>
+            <p className={`mt-4 text-lg font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Loading Admin Dashboard...</p>
           </div>
         </div>
         <Footer />
@@ -546,14 +574,14 @@ const AdminDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col transition-colors duration-300">
+      <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-[#121214] text-white' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 text-gray-800'}`}>
         <Toaster position="bottom-center" reverseOrder={false} />
         <Navbar />
         <div className="flex-grow flex items-center justify-center p-4">
-          <div className="text-center bg-red-50 p-6 rounded-lg shadow border border-red-200 max-w-lg w-full">
+          <div className={`text-center p-6 rounded-lg shadow border max-w-lg w-full ${isDarkMode ? 'bg-red-950/40 border-red-900/60' : 'bg-red-50 border-red-200'}`}>
             <FiAlertCircle className="mx-auto text-red-500 text-4xl mb-3" />
-            <p className="font-semibold text-red-800 text-lg">Error Loading Dashboard</p>
-            <p className="text-red-700 text-sm mt-1">{error}</p>
+            <p className={`font-semibold text-lg ${isDarkMode ? 'text-red-300' : 'text-red-800'}`}>Error Loading Dashboard</p>
+            <p className={`text-sm mt-1 ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{error}</p>
             <button onClick={() => navigate('/login')} className="mt-5 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded hover:bg-indigo-700 transition-colors">
               Go to Login
             </button>
@@ -565,14 +593,14 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex flex-col transition-colors duration-300">
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-[#121214] text-gray-100' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 text-gray-800'}`}>
       <Toaster position="bottom-center" reverseOrder={false} />
       <Navbar />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16 flex-grow">
         <header className="mb-6 sm:mb-8 animate-fade-in-down flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 tracking-tight">Admin Dashboard</h1>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">Overview and management tools.</p>
+            <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Admin Dashboard</h1>
+            <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mt-1 text-sm sm:text-base`}>Overview and management tools.</p>
           </div>
           <button
             onClick={() => setShowDownloadModal(true)}
@@ -583,22 +611,30 @@ const AdminDashboard = () => {
           </button>
         </header>
 
-        <div className="border-b border-gray-200 mb-4 sm:mb-6">
-          <nav className="flex -mb-px justify-around sm:justify-start sm:space-x-6" aria-label="Tabs">
+        {/* Second Section: Admin Navigation Card */}
+        <section className={`mb-6 sm:mb-8 rounded-xl p-4 shadow-sm border transition-colors duration-300 ${isDarkMode ? 'bg-[#18181b] border-zinc-800' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <FiShield size={18} className="text-indigo-500" />
+            <h2 className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Admin Navigation</h2>
+          </div>
+          <nav className="flex flex-wrap gap-2" aria-label="Tabs">
             <TabButton id="overview" activeTab={activeTab} setActiveTab={setActiveTab} icon={<FiActivity />}>
-              <span className="hidden sm:inline">Overview</span>
+              <span>Overview</span>
             </TabButton>
             <TabButton id="users" activeTab={activeTab} setActiveTab={setActiveTab} icon={<FiUsers />}>
-              <span className="hidden sm:inline">Manage Users ({stats.totalUsers})</span>
+              <span>Manage Users ({stats.totalUsers})</span>
+            </TabButton>
+            <TabButton id="volunteer-handling" activeTab={activeTab} setActiveTab={setActiveTab} icon={<FiUserCheck />}>
+              <span>Volunteer Handling</span>
             </TabButton>
             <TabButton id="complaints" activeTab={activeTab} setActiveTab={setActiveTab} icon={<FiClipboard />}>
-              <span className="hidden sm:inline">View Complaints ({stats.totalComplaints})</span>
+              <span>View Complaints ({stats.totalComplaints})</span>
             </TabButton>
-            <TabButton id="recent activities" activeTab={activeTab} setActiveTab={setActiveTab} icon={<FiClock />}>
-              <span className="hidden sm:inline">Recent Activities</span>
+            <TabButton id="admin-logs" activeTab={activeTab} setActiveTab={setActiveTab} icon={<FiShield />}>
+              <span>Admin Audit Logs</span>
             </TabButton>
           </nav>
-        </div>
+        </section>
 
         <div className="animate-fade-in-up">
           {activeTab === 'overview' && (
@@ -616,7 +652,7 @@ const AdminDashboard = () => {
           )}
 
           {activeTab === 'users' && (
-            <section className="bg-white p-4 sm:p-5 lg:p-6 rounded-xl shadow border border-gray-100">
+            <section className={`p-4 sm:p-5 lg:p-6 rounded-xl shadow border transition-colors duration-300 ${isDarkMode ? 'bg-[#18181b] border-zinc-800 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-5">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-800">User Management</h2>
                 
@@ -820,6 +856,206 @@ const AdminDashboard = () => {
                 <p className="text-center text-gray-500 py-6 text-sm sm:text-base">No users found matching the selected filters.</p>
               )}
             </section>
+          )}
+
+          {activeTab === 'volunteer-handling' && (
+            <div className="space-y-6">
+              {/* Volunteer Stats cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className={`p-4 rounded-xl shadow border transition-colors duration-300 ${isDarkMode ? 'bg-[#18181b] border-zinc-800 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-purple-100 dark:bg-purple-900/40 text-purple-600 rounded-full">
+                      <FiUsers size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{totalVolunteers}</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Volunteers</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-xl shadow border transition-colors duration-300 ${isDarkMode ? 'bg-[#18181b] border-zinc-800 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-orange-100 dark:bg-orange-900/40 text-orange-600 rounded-full">
+                      <FiLoader size={20} className="animate-spin" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{busyVolunteers}</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Active & Busy</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-xl shadow border transition-colors duration-300 ${isDarkMode ? 'bg-[#18181b] border-zinc-800 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-green-100 dark:bg-green-900/40 text-green-600 rounded-full">
+                      <FiUserCheck size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{idleVolunteers}</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Idle & Available</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-xl shadow border transition-colors duration-300 ${isDarkMode ? 'bg-[#18181b] border-zinc-800 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900/40 text-blue-600 rounded-full">
+                      <FiCheckCircle size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold">{totalResolvedTasks}</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Resolved by Volunteers</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Volunteers list */}
+              <div className={`p-5 rounded-xl shadow border transition-colors duration-300 ${isDarkMode ? 'bg-[#18181b] border-zinc-800' : 'bg-white border-gray-100'}`}>
+                <h3 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Volunteer Handling Status</h3>
+                
+                {volunteers.length === 0 ? (
+                  <p className={`text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No volunteers registered in the system yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {volunteers.map(volunteer => {
+                      const volunteerComplaints = complaints.filter(c => c.assigned_to?._id === volunteer._id);
+                      const activeAssignments = volunteerComplaints.filter(c => c.status !== 'resolved' && c.status !== 'rejected');
+                      const resolvedAssignments = volunteerComplaints.filter(c => c.status === 'resolved');
+                      const isBusy = activeAssignments.length > 0;
+                      const isExpanded = expandedVolunteers.has(volunteer._id);
+
+                      return (
+                        <div key={volunteer._id} className={`border rounded-xl overflow-hidden transition-all duration-200 ${isDarkMode ? 'border-zinc-800 bg-[#1e1e24]/40' : 'border-gray-200 bg-gray-50/30'}`}>
+                          {/* Volunteer Row Header */}
+                          <div 
+                            onClick={() => toggleVolunteerExpand(volunteer._id)}
+                            className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-gray-100/50 dark:hover:bg-zinc-800/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold">
+                                {volunteer.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <h4 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{volunteer.name}</h4>
+                                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{volunteer.email}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${isBusy ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300' : 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'}`}>
+                                {isBusy ? <FiLoader className="animate-spin" size={12} /> : <FiUserCheck size={12} />}
+                                {isBusy ? `${activeAssignments.length} Active Task(s)` : 'Available / Idle'}
+                              </span>
+                              {volunteer.location && (
+                                <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${isDarkMode ? 'bg-zinc-800 text-zinc-300' : 'bg-blue-50 text-blue-700'}`}>
+                                  <FiMapPin size={12} />
+                                  {volunteer.location}
+                                </span>
+                              )}
+                              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>
+                                {resolvedAssignments.length} Resolved
+                              </span>
+                              <button className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {isExpanded ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded Content: Complaints Handled */}
+                          {isExpanded && (
+                            <div className={`p-4 border-t transition-colors duration-300 ${isDarkMode ? 'border-zinc-800 bg-[#161619]/40' : 'border-gray-200 bg-white'}`}>
+                              <h5 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Assigned Complaints ({volunteerComplaints.length})</h5>
+                              
+                              {volunteerComplaints.length === 0 ? (
+                                <p className={`text-xs italic py-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No complaints currently assigned to this volunteer.</p>
+                              ) : (
+                                <div className="space-y-4">
+                                  {volunteerComplaints.map(complaint => {
+                                    const hasResolvedPhoto = complaint.resolvedPhoto && complaint.resolvedPhoto.trim() !== "";
+                                    const hasComplaintPhoto = complaint.photo && complaint.photo.trim() !== "";
+
+                                    return (
+                                      <div key={complaint._id} className={`p-4 rounded-xl border flex flex-col md:flex-row gap-4 transition-colors ${isDarkMode ? 'border-zinc-800/80 bg-[#1f1f23]/40' : 'border-gray-100 bg-gray-50/50'}`}>
+                                        {/* Left part: Details */}
+                                        <div className="flex-1 space-y-2">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <h6 className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{complaint.title}</h6>
+                                            <div>
+                                              {getStatusBadge(complaint.status)}
+                                            </div>
+                                          </div>
+
+                                          <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} line-clamp-2`}>{complaint.description}</p>
+                                          
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
+                                            <div className="flex items-start gap-1">
+                                              <FiMapPin className="text-gray-400 mt-0.5 flex-shrink-0" size={12} />
+                                              <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} line-clamp-1`}>{complaint.address}</span>
+                                            </div>
+                                            <div>
+                                              <span className="font-semibold text-gray-750 dark:text-gray-250">Type:</span> <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{complaint.type}</span>
+                                            </div>
+                                            <div>
+                                              <span className="font-semibold text-gray-750 dark:text-gray-250">Priority:</span> <span className={complaint.priority === 'High' ? 'text-red-500 font-semibold' : complaint.priority === 'Medium' ? 'text-orange-500 font-semibold' : 'text-gray-500'}>{complaint.priority}</span>
+                                            </div>
+                                            <div>
+                                              <span className="font-semibold text-gray-750 dark:text-gray-250">Reported By:</span> <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{complaint.user_id?.name || 'Unknown'} ({complaint.user_id?.email || 'N/A'})</span>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Right part: Photos Comparison */}
+                                        <div className="flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
+                                          {/* Before Image */}
+                                          <div className="text-center">
+                                            <p className={`text-[10px] font-bold uppercase mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Before</p>
+                                            {hasComplaintPhoto ? (
+                                              <a href={complaint.photo} target="_blank" rel="noopener noreferrer" className="block w-24 h-20 rounded-lg overflow-hidden border border-gray-200/60 dark:border-slate-700 shadow hover:opacity-90 transition-opacity">
+                                                <img src={complaint.photo} alt="Before" className="w-full h-full object-cover" />
+                                              </a>
+                                            ) : (
+                                              <div className={`w-24 h-20 rounded-lg border border-dashed flex items-center justify-center text-[10px] italic text-center p-1 ${isDarkMode ? 'border-slate-700 text-gray-500' : 'border-gray-300 text-gray-400'}`}>
+                                                No photo
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* After Image */}
+                                          <div className="text-center">
+                                            <p className={`text-[10px] font-bold uppercase mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>After (Proof)</p>
+                                            {complaint.status === 'resolved' ? (
+                                              hasResolvedPhoto ? (
+                                                <a href={complaint.resolvedPhoto} target="_blank" rel="noopener noreferrer" className="block w-24 h-20 rounded-lg overflow-hidden border border-green-200 dark:border-green-900/60 shadow hover:opacity-90 transition-opacity">
+                                                  <img src={complaint.resolvedPhoto} alt="After Proof" className="w-full h-full object-cover" />
+                                                </a>
+                                              ) : (
+                                                <div className="w-24 h-20 rounded-lg bg-green-50/50 dark:bg-green-950/20 border border-green-200/50 dark:border-green-900/40 flex items-center justify-center text-[9px] font-medium text-green-700 dark:text-green-400 text-center p-1">
+                                                  No proof
+                                                </div>
+                                              )
+                                            ) : (
+                                              <div className={`w-24 h-20 rounded-lg border border-dashed flex items-center justify-center text-[9px] italic text-center p-1 ${isDarkMode ? 'border-slate-700 text-gray-500' : 'border-gray-300 text-gray-400'}`}>
+                                                Pending
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {activeTab === 'complaints' && (
@@ -1040,83 +1276,55 @@ const AdminDashboard = () => {
             </section>
           )}
           
-          {activeTab === 'recent activities' && ( 
-            <div className="bg-white rounded-xl shadow p-4 sm:p-5 lg:p-6">
-              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Recent Activities</h2>
-              {activities.length === 0 ? (
-                <p className="text-center text-gray-500 py-6 text-sm sm:text-base">No recent activities.</p>
+          {activeTab === 'admin-logs' && (
+            <div className={`rounded-xl shadow border p-4 sm:p-5 lg:p-6 transition-colors duration-300 ${isDarkMode ? 'bg-[#001D3D] border-[#003566]/60 text-white' : 'bg-white border-gray-100 text-gray-800'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-5 border-b pb-4 border-gray-100 dark:border-slate-700/50">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold">Admin Audit Logs</h2>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>A complete log of administrative modifications and updates.</p>
+                </div>
+                <div className={`text-xs font-semibold px-3 py-1.5 rounded-full ${isDarkMode ? 'bg-[#003566]/40 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+                  {adminLogs.length} Total Logs
+                </div>
+              </div>
+
+              {adminLogs.length === 0 ? (
+                <div className="text-center py-10">
+                  <FiShield className="mx-auto text-4xl text-gray-400 mb-2" />
+                  <p className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>No administrative logs recorded yet.</p>
+                </div>
               ) : (
-                <ul className="space-y-2 divide-y divide-gray-100">
-                  {activities.map((update) => {
-                    // Determine icon and color based on update type
-                    let icon, colorClass, bgClass;
-                    switch(update.type) {
-                      case 'success':
-                        icon = <FiCheckCircle size={16} />;
-                        colorClass = 'text-green-600';
-                        bgClass = 'bg-green-50';
-                        break;
-                      case 'progress':
-                        icon = <FiClock size={16} />;
-                        colorClass = 'text-blue-600';
-                        bgClass = 'bg-blue-50';
-                        break;
-                      case 'assigned':
-                        icon = <FiUserCheck size={16} />;
-                        colorClass = 'text-purple-600';
-                        bgClass = 'bg-purple-50';
-                        break;
-                      case 'new':
-                        icon = <FiAlertCircle size={16} />;
-                        colorClass = 'text-orange-600';
-                        bgClass = 'bg-orange-50';
-                        break;
-                      default:
-                        icon = <FiActivity size={16} />;
-                        colorClass = 'text-gray-600';
-                        bgClass = 'bg-gray-50';
-                    }
-                    
-                    return (
-                      <li key={update._id} className="pt-3 first:pt-0 hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-full ${bgClass} ${colorClass} flex-shrink-0 mt-0.5`}>
-                            {icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-gray-800 text-sm font-medium mb-1">
-                              {update.message}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                              <span className="inline-flex items-center gap-1">
-                                <FiClipboard size={10} />
-                                {update.complaintType}
-                              </span>
-                              {update.reportedBy && (
-                                <span className="inline-flex items-center gap-1">
-                                  • Reported by: {update.reportedBy}
-                                </span>
-                              )}
-                              {update.location && (
-                                <span className="inline-flex items-center gap-1">
-                                  • {update.location}
-                                </span>
-                              )}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-700/50">
+                    <thead className={isDarkMode ? 'bg-slate-900/50' : 'bg-gray-50'}>
+                      <tr>
+                        <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Timestamp</th>
+                        <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Administrator</th>
+                        <th className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Action Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y divide-gray-100 ${isDarkMode ? 'divide-slate-700/50' : 'divide-gray-100'}`}>
+                      {adminLogs.map((log) => (
+                        <tr key={log._id || log.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className={`px-5 py-4 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {formatDate(log.timestamp)}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap text-sm font-medium">
+                            <div>
+                              <p className={isDarkMode ? 'text-white' : 'text-gray-900'}>{log.user_id?.name || 'System Admin'}</p>
+                              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{log.user_id?.email || 'N/A'}</p>
                             </div>
-                          </div>
-                          <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
-                            {new Date(update.timestamp).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                          </td>
+                          <td className="px-5 py-4 text-sm">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${isDarkMode ? 'bg-[#000F26]/30 text-indigo-300 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-800 border border-indigo-100'}`}>
+                              {log.action}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}
@@ -1191,32 +1399,40 @@ const AdminDashboard = () => {
 };
 
 
-const StatCard = ({ icon, value, label }) => (
-  <div className="bg-white p-4 sm:p-5 rounded-xl shadow border border-gray-100 flex items-center gap-3 sm:gap-4 transition-all duration-300 ease-in-out hover:shadow-lg hover:border-indigo-100 transform hover:-translate-y-1">
-    <div className="p-2 sm:p-3 rounded-full bg-gradient-to-br from-gray-100 to-blue-100 text-xl sm:text-2xl flex-shrink-0">
-      {icon}
+const StatCard = ({ icon, value, label }) => {
+  const { isDarkMode } = useTheme();
+  return (
+    <div className={`p-4 sm:p-5 rounded-xl shadow border flex items-center gap-3 sm:gap-4 transition-all duration-300 ease-in-out hover:shadow-lg transform hover:-translate-y-1 ${isDarkMode ? 'bg-[#001D3D] border-[#003566]/60 text-white hover:border-indigo-500/50' : 'bg-white border-gray-100 text-gray-800 hover:border-indigo-100'}`}>
+      <div className={`p-2 sm:p-3 rounded-full text-xl sm:text-2xl flex-shrink-0 ${isDarkMode ? 'bg-[#003566]/60 text-indigo-400' : 'bg-gradient-to-br from-gray-100 to-blue-100 text-indigo-600'}`}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className={`text-xl sm:text-2xl font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{value}</p>
+        <p className={`text-xs sm:text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{label}</p>
+      </div>
     </div>
-    <div className="min-w-0">
-      <p className="text-xl sm:text-2xl font-bold text-gray-800 capitalize truncate">{value}</p>
-      <p className="text-xs sm:text-sm font-medium text-gray-500">{label}</p>
-    </div>
-  </div>
-);
+  );
+};
 
- const TabButton = ({ id, activeTab, setActiveTab, icon, children }) => (
-   <button
-      onClick={() => setActiveTab(id)}
-      className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors duration-200 focus:outline-none focus-visible:bg-indigo-50 rounded-t flex-1 sm:flex-initial
-        ${activeTab === id
-          ? "border-indigo-600 text-indigo-600"
-          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-        }`}
-      title={id}
-    >
-      {React.cloneElement(icon, { size: 20, className: "sm:w-4 sm:h-4" })}
-      {children}
-   </button>
- );
+ const TabButton = ({ id, activeTab, setActiveTab, icon, children }) => {
+   const { isDarkMode } = useTheme();
+   return (
+     <button
+        onClick={() => setActiveTab(id)}
+        className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors duration-200 focus:outline-none rounded-t flex-1 sm:flex-initial
+          ${activeTab === id
+            ? isDarkMode ? "border-indigo-400 text-indigo-400" : "border-indigo-600 text-indigo-600"
+            : isDarkMode
+              ? "border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-700"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+        title={id}
+      >
+        {React.cloneElement(icon, { size: 20, className: "sm:w-4 sm:h-4" })}
+        {children}
+     </button>
+   );
+ };
 
 
 export default AdminDashboard;
