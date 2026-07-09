@@ -8,25 +8,54 @@ import mongoose from "mongoose";
  */
 const getCoordinatesFromLocation = async (location) => {
   try {
+    // Clean up the location string
+    const cleanLocation = location.trim();
+    
+    if (!cleanLocation) {
+      console.error("Empty location provided for geocoding");
+      return null;
+    }
+
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanLocation)}&format=json&limit=1`,
       {
         headers: {
           'User-Agent': 'CleanStreetApp/1.0'
-        }
+        },
+        signal: controller.signal
       }
     );
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.error(`Geocoding API returned status ${response.status} for location "${cleanLocation}"`);
+      return null;
+    }
+
     const data = await response.json();
 
     if (data && data.length > 0) {
-      return {
+      const coords = {
         latitude: parseFloat(data[0].lat),
         longitude: parseFloat(data[0].lon)
       };
+      console.log(`Successfully geocoded "${cleanLocation}" to:`, coords);
+      return coords;
     }
+    
+    console.warn(`No geocoding results found for location "${cleanLocation}"`);
     return null;
   } catch (error) {
-    console.error(`Geocoding error for location "${location}":`, error);
+    if (error.name === 'AbortError') {
+      console.error(`Geocoding timeout for location "${location}"`);
+    } else {
+      console.error(`Geocoding error for location "${location}":`, error.message);
+    }
     return null;
   }
 };
@@ -58,13 +87,18 @@ export const getNearbyComplaints = async (req, res) => {
     const volunteer = await User.findById(volunteerId);
 
     if (!volunteer || volunteer.role !== "volunteer") {
-      return res.status(403).json({ message: "Access denied. Volunteers only." });
+      return res.status(403).json({ 
+        success: false,
+        message: "Access denied. Volunteers only." 
+      });
     }
 
     // Check if volunteer has location
-    if (!volunteer.location) {
+    if (!volunteer.location || volunteer.location.trim() === "") {
       return res.status(400).json({
-        message: "Volunteer location not set. Please update your profile with a location."
+        success: false,
+        message: "Volunteer location not set. Please update your profile with a location.",
+        errorType: "LOCATION_NOT_SET"
       });
     }
 
@@ -73,7 +107,10 @@ export const getNearbyComplaints = async (req, res) => {
 
     if (!volunteerCoords) {
       return res.status(400).json({
-        message: `Could not geocode location: "${volunteer.location}". Please go to your profile and update it to a valid city or address.`
+        success: false,
+        message: `Could not geocode location: "${volunteer.location}". Please go to your profile and update it to a valid city or address.`,
+        errorType: "GEOCODING_FAILED",
+        currentLocation: volunteer.location
       });
     }
 
@@ -89,6 +126,11 @@ export const getNearbyComplaints = async (req, res) => {
 
     // Filter complaints by distance
     const nearbyComplaints = allComplaints.filter(complaint => {
+      // Skip complaints with invalid coordinates
+      if (!complaint.location_coords || !complaint.location_coords.coordinates || 
+          complaint.location_coords.coordinates.length < 2) {
+        return false;
+      }
       const complaintLat = complaint.location_coords.coordinates[1];
       const complaintLon = complaint.location_coords.coordinates[0];
       const distance = calculateDistance(
@@ -123,7 +165,11 @@ export const getNearbyComplaints = async (req, res) => {
 
   } catch (error) {
     console.error("Error fetching nearby complaints:", error);
-    res.status(500).json({ message: "Server error. Could not fetch nearby complaints." });
+    res.status(500).json({ 
+      success: false,
+      message: "Server error. Could not fetch nearby complaints.",
+      errorType: "SERVER_ERROR"
+    });
   }
 };
 

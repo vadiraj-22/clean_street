@@ -36,7 +36,8 @@ const VolunteerDashboard = () => {
     resolvedAssignments: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
+  const [nearbyError, setNearbyError] = useState(null); // Separate error for nearby complaints
   const [volunteerLocation, setVolunteerLocation] = useState("");
   const [actionLoading, setActionLoading] = useState({});
   const [activities, setActivities] = useState([]); // ✅ NEW STATE FOR ADMIN LOGS
@@ -59,26 +60,57 @@ const VolunteerDashboard = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    setError("");
+    setError(null);
+    setNearbyError(null);
     try {
       const token = localStorage.getItem('token');
       const headers = {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
 
-      const nearbyRes = await fetch(`${backendUrl}/api/volunteer/nearby-complaints?maxDistance=50&_t=${Date.now()}`, {
-        credentials: "include",
-        headers,
-        cache: "no-store"
-      });
-      const nearbyData = await nearbyRes.json();
-      if (nearbyRes.ok && nearbyData.success) {
-        setNearbyComplaints(nearbyData.data || []);
-        setVolunteerLocation(nearbyData.volunteerLocation || "Your Area");
-      } else {
-        throw new Error(nearbyData.message || "Failed to fetch nearby complaints.");
+      // Fetch nearby complaints
+      try {
+        const nearbyRes = await fetch(`${backendUrl}/api/volunteer/nearby-complaints?maxDistance=50&_t=${Date.now()}`, {
+          credentials: "include",
+          headers,
+          cache: "no-store"
+        });
+        const nearbyData = await nearbyRes.json();
+        
+        if (nearbyRes.ok && nearbyData.success) {
+          setNearbyComplaints(nearbyData.data || []);
+          setVolunteerLocation(nearbyData.volunteerLocation || "Your Area");
+        } else {
+          // Store nearby-specific error but don't block the entire dashboard
+          if (nearbyData.errorType === "LOCATION_NOT_SET") {
+            setNearbyError({
+              message: nearbyData.message,
+              type: "LOCATION_NOT_SET",
+              action: "profile"
+            });
+          } else if (nearbyData.errorType === "GEOCODING_FAILED") {
+            setNearbyError({
+              message: nearbyData.message,
+              type: "GEOCODING_FAILED",
+              currentLocation: nearbyData.currentLocation,
+              action: "profile"
+            });
+          } else {
+            setNearbyError({
+              message: nearbyData.message || "Failed to fetch nearby complaints.",
+              type: "SERVER_ERROR"
+            });
+          }
+        }
+      } catch (nearbyErr) {
+        console.error("Error fetching nearby complaints:", nearbyErr);
+        setNearbyError({
+          message: "Network error loading nearby complaints.",
+          type: "NETWORK_ERROR"
+        });
       }
 
+      // Fetch assignments (independent of nearby complaints)
       const assignmentsRes = await fetch(`${backendUrl}/api/volunteer/my-assignments`, {
         credentials: "include",
         headers
@@ -110,8 +142,12 @@ const VolunteerDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching volunteer data:", error);
-      setError(error.message || "Could not load dashboard data. Please try again.");
-      if (error.message.includes("401") || error.message.includes("403")) {
+      // Critical error that blocks the whole dashboard
+      setError({
+        message: error?.message || error || "Could not load dashboard data. Please try again.",
+        type: "SERVER_ERROR"
+      });
+      if (error.message && (error.message.includes("401") || error.message.includes("403"))) {
         toast.error("Session expired or unauthorized. Please log in again.");
         navigate("/login");
       }
@@ -337,16 +373,63 @@ const VolunteerDashboard = () => {
         <Toaster position="top-right" reverseOrder={false} />
         <Navbar />
         <div className="flex-grow flex items-center justify-center p-4">
-          <div className="text-center bg-red-50 p-6 rounded-lg shadow border border-red-200 max-w-lg w-full">
-            <FiAlertCircle className="mx-auto text-red-500 text-4xl mb-3" />
-            <p className="font-semibold text-red-800 text-lg">Error Loading Dashboard</p>
-            <p className="text-red-700 text-sm mt-1">{error}</p>
-            <button
-              onClick={() => fetchData()}
-              className="mt-5 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded hover:bg-indigo-700 transition-colors"
-            >
-              Retry Loading
-            </button>
+          <div className="text-center bg-red-50 p-8 rounded-xl shadow-lg border border-red-200 max-w-2xl w-full">
+            <FiAlertCircle className="mx-auto text-red-500 text-5xl mb-4" />
+            <p className="font-bold text-red-800 text-xl mb-2">Error Loading Dashboard</p>
+            <p className="text-red-700 text-base mb-4">{error.message || error}</p>
+            
+            {error.type === "LOCATION_NOT_SET" && (
+              <div className="bg-white p-4 rounded-lg border border-red-100 mb-4">
+                <p className="text-sm text-gray-700 mb-3">
+                  <strong>What to do:</strong> Your profile doesn't have a location set. 
+                  We need your location to show you nearby complaints.
+                </p>
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Go to Profile to Add Location
+                </button>
+              </div>
+            )}
+            
+            {error.type === "GEOCODING_FAILED" && (
+              <div className="bg-white p-4 rounded-lg border border-red-100 mb-4">
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Current location:</strong> <span className="font-mono bg-gray-100 px-2 py-1 rounded">{error.currentLocation}</span>
+                </p>
+                <p className="text-sm text-gray-600 mb-3">
+                  We couldn't find this location. Please update it to a valid city or address.
+                  <br />
+                  <strong>Examples:</strong> "Bangalore, Karnataka" or "Bengaluru, India" or a full address.
+                </p>
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Update Location in Profile
+                </button>
+              </div>
+            )}
+            
+            <div className="flex gap-3 justify-center mt-5">
+              <button
+                onClick={() => fetchData()}
+                className="px-5 py-2.5 bg-gray-700 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+              >
+                <FiRotateCw size={16} /> Retry Loading
+              </button>
+            </div>
+            
+            {/* Still show assignments section if available */}
+            {myAssignments.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-red-200">
+                <p className="text-sm text-gray-600 mb-3">
+                  You have <strong>{myAssignments.length}</strong> assignment(s). 
+                  View them by fixing your location issue above.
+                </p>
+              </div>
+            )}
           </div>
         </div>
         <Footer />
@@ -470,14 +553,59 @@ const VolunteerDashboard = () => {
           <div>
             {activeTab === "nearby" ? (
               <section>
-                {nearbyComplaints.length === 0 ? (
+                {/* Location Error Banner */}
+                {nearbyError && (
+                  <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <FiAlertCircle className="text-amber-600 text-2xl flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-amber-900 text-base mb-1">
+                          {nearbyError.type === "LOCATION_NOT_SET" ? "Location Not Set" : 
+                           nearbyError.type === "GEOCODING_FAILED" ? "Invalid Location" : "Error Loading Nearby Complaints"}
+                        </h3>
+                        <p className="text-amber-800 text-sm mb-3">{nearbyError.message}</p>
+                        
+                        {nearbyError.type === "GEOCODING_FAILED" && nearbyError.currentLocation && (
+                          <p className="text-xs text-amber-700 mb-2 font-mono bg-amber-100 px-2 py-1 rounded inline-block">
+                            Current: {nearbyError.currentLocation}
+                          </p>
+                        )}
+                        
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          <button
+                            onClick={() => navigate("/profile")}
+                            className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                          >
+                            <FiMapPin size={14} /> Update Location in Profile
+                          </button>
+                          <button
+                            onClick={() => fetchData()}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
+                          >
+                            <FiRotateCw size={14} /> Retry
+                          </button>
+                        </div>
+                        
+                        {nearbyError.type !== "LOCATION_NOT_SET" && (
+                          <div className="mt-3 pt-3 border-t border-amber-200">
+                            <p className="text-xs text-amber-700">
+                              <strong>Tip:</strong> Use full city names like "Bangalore, Karnataka" or "Mumbai, Maharashtra" for better results.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {nearbyComplaints.length === 0 && !nearbyError ? (
                   <div className="text-center bg-white rounded-xl shadow border border-gray-100 p-12">
                     <FiMapPin className="mx-auto text-5xl text-gray-300 mb-4" />
                     <p className="text-gray-500 text-lg font-medium">
                       No unassigned complaints found nearby.
                     </p>
                   </div>
-                ) : (
+                ) : nearbyComplaints.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {nearbyComplaints.map((complaint) => (
                       <NearbyComplaintCard
@@ -491,7 +619,7 @@ const VolunteerDashboard = () => {
                       />
                     ))}
                   </div>
-                )}
+                ) : null}
               </section>
             ) : (
               <section>
