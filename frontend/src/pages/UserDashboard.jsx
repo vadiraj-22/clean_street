@@ -39,8 +39,8 @@ const UserDashboard = () => {
 
   useEffect(() => {
     if (!user) {
-      toast.error("Session expired or unauthorized. Please log in again.");
-      navigate("/login");
+      toast.error("Session expired or unauthorized.");
+      navigate("/session-expired");
       return;
     }
     const fetchDashboardData = async () => {
@@ -65,8 +65,8 @@ const UserDashboard = () => {
           setDashboardData({ complaints, stats });
         } else {
           if (res.status === 401 || res.status === 403) {
-            toast.error("Session expired or unauthorized. Please log in again.");
-            navigate("/login");
+            toast.error("Session expired or unauthorized.");
+            navigate("/session-expired");
           } else {
             toast.error(data.message || "Failed to fetch dashboard data.");
           }

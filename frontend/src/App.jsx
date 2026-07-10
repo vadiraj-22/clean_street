@@ -13,6 +13,7 @@ import AboutPage from "./pages/AboutPage";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import ServicesPage from "./pages/ServicesPage";
 import CompleteProfile from "./pages/CompleteProfile";
+import SessionExpired from "./pages/SessionExpired";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/how-it-works" element={<HowItWorksPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
+          <Route path="/session-expired" element={<SessionExpired />} />
       </Routes>
     </Router>
 

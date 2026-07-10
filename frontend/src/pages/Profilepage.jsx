@@ -43,8 +43,8 @@ export default function Profilepage() {
         setUser(parsed);
         setForm({ name: parsed.name || "", email: parsed.email || "", location: parsed.location || "" });
         setPreviewUrl(parsed.profilePhoto || "");
-      } else { navigate("/login"); }
-    } catch { navigate("/login"); }
+      } else { navigate("/session-expired"); }
+    } catch { navigate("/session-expired"); }
   }, [navigate]);
 
   const togglePasswordVisibility = (field) => setPasswordVisibility(prev => ({ ...prev, [field]: !prev[field] }));

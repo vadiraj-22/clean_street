@@ -148,8 +148,8 @@ const VolunteerDashboard = () => {
         type: "SERVER_ERROR"
       });
       if (error.message && (error.message.includes("401") || error.message.includes("403"))) {
-        toast.error("Session expired or unauthorized. Please log in again.");
-        navigate("/login");
+        toast.error("Session expired or unauthorized.");
+        navigate("/session-expired");
       }
     } finally {
       setLoading(false);

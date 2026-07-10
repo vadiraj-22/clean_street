@@ -80,8 +80,8 @@ const AdminDashboard = () => {
       console.error("Error fetching admin data:", err);
       setError(err.message || "Failed to load data. Please try again.");
       if (err.message.includes('403') || err.message.includes('401') || err.message.includes('logged in')) {
-        toast.error("Authentication failed or forbidden access. Please log in as an admin.");
-        navigate('/login');
+        toast.error("Session expired or forbidden access.");
+        navigate('/session-expired');
       }
     } finally {
       setLoading(false);
